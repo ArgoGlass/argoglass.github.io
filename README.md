@@ -11,18 +11,6 @@ What I added:
 
 How to deploy (push to GitHub):
 
-1. Commit the added files (if not already):
-
-   git add index.html README.md .nojekyll
-   git commit -m "Add Swagger UI index to serve API specs"
-
-2. Push to the `main` branch on GitHub:
-
-   git push origin main
-
-3. Visit the site:
-
-   https://carmy25.github.io/
 
 Notes:
 
