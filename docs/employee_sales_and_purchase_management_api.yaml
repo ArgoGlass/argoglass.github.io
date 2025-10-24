@@ -1,0 +1,992 @@
+openapi: 3.0.0
+info:
+  title: Odoo Sales & Purchase API
+  description: |
+    API for managing Sales Orders and Purchase Orders in Odoo.
+    
+    **Authentication:** All requests require an API token in the Authorization header
+  version: 1.0.0
+  contact:
+    name: API Support
+
+servers:
+  - url: https://your-odoo-domain.com
+    description: Production server
+
+security:
+  - BearerAuth: []
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: API Token
+      description: "Use format: Bearer YOUR_API_TOKEN"
+
+  schemas:
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+          example: "Error message description"
+
+    Product:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 15
+        name:
+          type: string
+          example: "Wireless Mouse"
+        default_code:
+          type: string
+          example: "MOUSE-001"
+        list_price:
+          type: number
+          example: 29.99
+        standard_price:
+          type: number
+          example: 15.00
+        uom_id:
+          type: integer
+          example: 1
+        uom_name:
+          type: string
+          example: "Unit"
+        categ_id:
+          type: integer
+          example: 5
+        categ_name:
+          type: string
+          example: "Electronics"
+        barcode:
+          type: string
+          example: "1234567890123"
+        active:
+          type: boolean
+          example: true
+        qty_available:
+          type: number
+          example: 150
+
+    UoM:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        name:
+          type: string
+          example: "Unit"
+        category_id:
+          type: integer
+          example: 1
+        category_name:
+          type: string
+          example: "Unit"
+        uom_type:
+          type: string
+          example: "reference"
+        ratio:
+          type: number
+          example: 1.0
+        rounding:
+          type: number
+          example: 0.01
+
+    ProductCategory:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 5
+        name:
+          type: string
+          example: "Electronics"
+        complete_name:
+          type: string
+          example: "All Products / Electronics"
+        parent_id:
+          type: integer
+          example: 1
+        parent_name:
+          type: string
+          example: "All Products"
+        product_count:
+          type: integer
+          example: 25
+        child_count:
+          type: integer
+          example: 3
+        child_ids:
+          type: array
+          items:
+            type: integer
+          example: [6, 7, 8]
+
+    OrderLineProduct:
+      type: object
+      properties:
+        product_id:
+          type: integer
+          example: 15
+        quantity:
+          type: number
+          example: 3
+        product_uom:
+          type: integer
+          example: 1
+      required:
+        - product_id
+        - quantity
+        - product_uom
+
+    OrderLineSection:
+      type: object
+      properties:
+        display_type:
+          type: string
+          enum: [line_section, line_note]
+          example: "line_section"
+        name:
+          type: string
+          example: "Hardware Section"
+      required:
+        - display_type
+        - name
+
+    SalesOrderResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 123
+        name:
+          type: string
+          example: "SO0123"
+        partner:
+          type: string
+          example: "Acme Corporation"
+        date_order:
+          type: string
+          format: date-time
+          example: "2025-10-20T10:30:00"
+        state:
+          type: string
+          example: "sale"
+        state_label:
+          type: string
+          example: "Sales Order"
+        amount_untaxed:
+          type: number
+          example: 250.00
+        amount_tax:
+          type: number
+          example: 50.00
+        amount_total:
+          type: number
+          example: 300.00
+        currency:
+          type: string
+          example: "USD"
+        salesperson:
+          type: string
+          example: "John Doe"
+        order_line_count:
+          type: integer
+          example: 3
+
+    PurchaseOrderResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 456
+        name:
+          type: string
+          example: "PO0456"
+        partner:
+          type: string
+          example: "Supplier Inc"
+        date_order:
+          type: string
+          format: date-time
+          example: "2025-10-20T14:00:00"
+        state:
+          type: string
+          example: "purchase"
+        amount_total:
+          type: number
+          example: 1500.00
+        responsible:
+          type: string
+          example: "Jane Smith"
+
+    CreateOrderRequest:
+      type: object
+      properties:
+        note:
+          type: string
+          example: "Please deliver before 5 PM"
+        client_order_ref:
+          type: string
+          example: "CUST-REF-2025-001"
+        order_lines:
+          type: array
+          items:
+            oneOf:
+              - $ref: '#/components/schemas/OrderLineProduct'
+              - $ref: '#/components/schemas/OrderLineSection'
+          example:
+            - display_type: "line_section"
+              name: "Hardware Items"
+            - product_id: 15
+              quantity: 2
+              product_uom: 1
+            - display_type: "line_note"
+              name: "Check quality before shipping"
+            - product_id: 28
+              quantity: 5
+              product_uom: 1
+      required:
+        - order_lines
+
+paths:
+  /api/v1/sales/my-orders:
+    get:
+      summary: Get my sales orders
+      description: Returns all Sales Orders created by the authenticated employee
+      tags:
+        - Sales Orders
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 100
+          description: Number of records to return
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+          description: Offset for pagination
+        - name: state
+          in: query
+          schema:
+            type: string
+            enum: [draft, sent, sale, done, cancel]
+          description: Filter by order state
+          example: "sale"
+        - name: search
+          in: query
+          schema:
+            type: string
+          description: Search by order name or partner name
+          example: "Acme"
+        - name: date_from
+          in: query
+          schema:
+            type: string
+            format: date
+          description: Filter orders from this date (YYYY-MM-DD)
+          example: "2025-01-01"
+        - name: date_to
+          in: query
+          schema:
+            type: string
+            format: date
+          description: Filter orders until this date (YYYY-MM-DD)
+          example: "2025-12-31"
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  employee:
+                    type: string
+                    example: "John Doe"
+                  partner_id:
+                    type: integer
+                    example: 42
+                  total_count:
+                    type: integer
+                    example: 15
+                  limit:
+                    type: integer
+                    example: 100
+                  offset:
+                    type: integer
+                    example: 0
+                  stats:
+                    type: object
+                    properties:
+                      draft:
+                        type: integer
+                        example: 3
+                      sent:
+                        type: integer
+                        example: 2
+                      sale:
+                        type: integer
+                        example: 8
+                      done:
+                        type: integer
+                        example: 1
+                      cancel:
+                        type: integer
+                        example: 1
+                  orders:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/SalesOrderResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/v1/purchase/my-orders:
+    get:
+      summary: Get my purchase orders
+      description: Returns all Purchase Orders created by the authenticated employee
+      tags:
+        - Purchase Orders
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 100
+          description: Number of records to return
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+          description: Offset for pagination
+        - name: state
+          in: query
+          schema:
+            type: string
+            enum: [draft, sent, to approve, purchase, done, cancel]
+          description: Filter by order state
+          example: "purchase"
+        - name: search
+          in: query
+          schema:
+            type: string
+          description: Search by order name or partner name
+          example: "Supplier"
+        - name: date_from
+          in: query
+          schema:
+            type: string
+            format: date
+          description: Filter orders from this date (YYYY-MM-DD)
+          example: "2025-01-01"
+        - name: date_to
+          in: query
+          schema:
+            type: string
+            format: date
+          description: Filter orders until this date (YYYY-MM-DD)
+          example: "2025-12-31"
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  total_count:
+                    type: integer
+                    example: 10
+                  orders:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/PurchaseOrderResponse'
+        '401':
+          description: Unauthorized
+
+  /api/v1/sales/{order_id}:
+    get:
+      summary: Get sales order by ID
+      description: Returns a specific Sales Order by ID
+      tags:
+        - Sales Orders
+      parameters:
+        - name: order_id
+          in: path
+          required: true
+          schema:
+            type: integer
+          example: 123
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  order:
+                    $ref: '#/components/schemas/SalesOrderResponse'
+                  order_lines:
+                    type: array
+                    items:
+                      type: object
+        '404':
+          description: Order not found
+
+  /api/v1/purchase/{order_id}:
+    get:
+      summary: Get purchase order by ID
+      description: Returns a specific Purchase Order by ID
+      tags:
+        - Purchase Orders
+      parameters:
+        - name: order_id
+          in: path
+          required: true
+          schema:
+            type: integer
+          example: 456
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  order:
+                    $ref: '#/components/schemas/PurchaseOrderResponse'
+        '404':
+          description: Order not found
+
+  /api/v1/sales/create:
+    post:
+      summary: Create sales order
+      description: Creates a new Sales Order. The authenticated employee is automatically assigned as partner.
+      tags:
+        - Sales Orders
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateOrderRequest'
+            example:
+              note: "Please deliver before 5 PM"
+              client_order_ref: "CUST-REF-2025-001"
+              order_lines:
+                - display_type: "line_section"
+                  name: "Hardware Items"
+                - product_id: 15
+                  quantity: 2
+                  product_uom: 1
+                - display_type: "line_note"
+                  name: "Check quality before shipping"
+                - product_id: 28
+                  quantity: 5
+                  product_uom: 1
+      responses:
+        '201':
+          description: Order created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  order:
+                    $ref: '#/components/schemas/SalesOrderResponse'
+        '400':
+          description: Bad request
+        '404':
+          description: Product or UoM not found
+
+  /api/v1/purchase/create:
+    post:
+      summary: Create purchase order
+      description: Creates a new Purchase Order. The authenticated employee is automatically assigned as partner.
+      tags:
+        - Purchase Orders
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                note:
+                  type: string
+                  example: "Urgent delivery needed"
+                order_lines:
+                  type: array
+                  items:
+                    oneOf:
+                      - $ref: '#/components/schemas/OrderLineProduct'
+                      - $ref: '#/components/schemas/OrderLineSection'
+                  example:
+                    - display_type: "line_section"
+                      name: "Raw Materials"
+                    - product_id: 15
+                      quantity: 10
+                      product_uom: 1
+                    - display_type: "line_note"
+                      name: "Quality certificate required"
+      responses:
+        '201':
+          description: Order created successfully
+        '400':
+          description: Bad request
+
+  /api/v1/sales/{order_id}/update:
+    put:
+      summary: Update sales order
+      description: Updates a Sales Order (only in draft state). This will REPLACE all existing order lines.
+      tags:
+        - Sales Orders
+      parameters:
+        - name: order_id
+          in: path
+          required: true
+          schema:
+            type: integer
+          example: 123
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateOrderRequest'
+            example:
+              note: "Updated delivery instructions"
+              client_order_ref: "NEW-REF-2025-002"
+              order_lines:
+                - display_type: "line_section"
+                  name: "Updated Section"
+                - product_id: 15
+                  quantity: 5
+                  product_uom: 1
+      responses:
+        '200':
+          description: Order updated successfully
+        '400':
+          description: Bad request (order not in draft state)
+        '403':
+          description: Forbidden (not owner of order)
+        '404':
+          description: Order not found
+
+  /api/v1/purchase/{order_id}/update:
+    put:
+      summary: Update purchase order
+      description: Updates a Purchase Order (only in draft state). This will REPLACE all existing order lines.
+      tags:
+        - Purchase Orders
+      parameters:
+        - name: order_id
+          in: path
+          required: true
+          schema:
+            type: integer
+          example: 456
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                note:
+                  type: string
+                  example: "Updated delivery instructions"
+                order_lines:
+                  type: array
+                  items:
+                    oneOf:
+                      - $ref: '#/components/schemas/OrderLineProduct'
+                      - $ref: '#/components/schemas/OrderLineSection'
+      responses:
+        '200':
+          description: Order updated successfully
+        '400':
+          description: Bad request
+        '403':
+          description: Forbidden
+
+  /api/v1/sales/{order_id}/confirm:
+    post:
+      summary: Confirm sales order
+      description: Confirms a Sales Order (changes state from draft/sent to sale)
+      tags:
+        - Sales Orders
+      parameters:
+        - name: order_id
+          in: path
+          required: true
+          schema:
+            type: integer
+          example: 123
+      responses:
+        '200':
+          description: Order confirmed successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "Sales Order confirmed successfully"
+                  order:
+                    type: object
+                    properties:
+                      id:
+                        type: integer
+                        example: 123
+                      name:
+                        type: string
+                        example: "SO0123"
+                      state:
+                        type: string
+                        example: "sale"
+                      confirmed_by:
+                        type: string
+                        example: "John Doe"
+        '400':
+          description: Cannot confirm (wrong state)
+        '404':
+          description: Order not found
+
+  /api/v1/purchase/{order_id}/confirm:
+    post:
+      summary: Confirm purchase order
+      description: Confirms a Purchase Order (changes state from draft/sent to purchase)
+      tags:
+        - Purchase Orders
+      parameters:
+        - name: order_id
+          in: path
+          required: true
+          schema:
+            type: integer
+          example: 456
+      responses:
+        '200':
+          description: Order confirmed successfully
+        '400':
+          description: Cannot confirm (wrong state)
+        '404':
+          description: Order not found
+
+  /api/v1/products:
+    get:
+      summary: Get all products
+      description: Returns all available products for sale
+      tags:
+        - Products
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 100
+          description: Number of records to return
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+          description: Offset for pagination
+        - name: search
+          in: query
+          schema:
+            type: string
+          description: Search by product name
+          example: "mouse"
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  total_count:
+                    type: integer
+                    example: 250
+                  limit:
+                    type: integer
+                    example: 100
+                  offset:
+                    type: integer
+                    example: 0
+                  products:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Product'
+        '401':
+          description: Unauthorized
+
+  /api/v1/products/{product_id}/image:
+    get:
+      summary: Get product image
+      description: Returns product image as binary data
+      tags:
+        - Products
+      parameters:
+        - name: product_id
+          in: path
+          required: true
+          schema:
+            type: integer
+          example: 15
+        - name: size
+          in: query
+          schema:
+            type: string
+            enum: [thumbnail, small, medium, large, original]
+            default: medium
+          description: Image size
+          example: "medium"
+      responses:
+        '200':
+          description: Image returned successfully
+          content:
+            image/png:
+              schema:
+                type: string
+                format: binary
+        '404':
+          description: Product or image not found
+
+  /api/v1/products/{product_id}/image-info:
+    get:
+      summary: Get product image info
+      description: Returns product image information as base64 encoded JSON
+      tags:
+        - Products
+      parameters:
+        - name: product_id
+          in: path
+          required: true
+          schema:
+            type: integer
+          example: 15
+        - name: size
+          in: query
+          schema:
+            type: string
+            enum: [thumbnail, small, medium, large, original]
+            default: medium
+          example: "thumbnail"
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  has_image:
+                    type: boolean
+                    example: true
+                  product_id:
+                    type: integer
+                    example: 15
+                  product_name:
+                    type: string
+                    example: "Wireless Mouse"
+                  image_data:
+                    type: string
+                    description: Base64 encoded image
+                  image_format:
+                    type: string
+                    example: "image/png"
+
+  /api/v1/uom:
+    get:
+      summary: Get units of measure
+      description: Returns all units of measure (UoM)
+      tags:
+        - Reference Data
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 100
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+        - name: search
+          in: query
+          schema:
+            type: string
+          example: "kg"
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  total_count:
+                    type: integer
+                    example: 50
+                  uoms:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/UoM'
+
+  /api/v1/product/categories:
+    get:
+      summary: Get product categories
+      description: Returns all product categories
+      tags:
+        - Reference Data
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 100
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+        - name: search
+          in: query
+          schema:
+            type: string
+          example: "electronics"
+        - name: parent_id
+          in: query
+          schema:
+            type: string
+          description: Filter by parent category (use 'false' for root categories)
+          example: "5"
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  total_count:
+                    type: integer
+                    example: 25
+                  categories:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ProductCategory'
+
+  /api/v1/product/categories/{category_id}:
+    get:
+      summary: Get product category by ID
+      description: Returns detailed information about a specific product category
+      tags:
+        - Reference Data
+      parameters:
+        - name: category_id
+          in: path
+          required: true
+          schema:
+            type: integer
+          example: 5
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  category:
+                    allOf:
+                      - $ref: '#/components/schemas/ProductCategory'
+                      - type: object
+                        properties:
+                          path:
+                            type: array
+                            items:
+                              type: object
+                              properties:
+                                id:
+                                  type: integer
+                                name:
+                                  type: string
+                            example:
+                              - id: 1
+                                name: "All Products"
+                              - id: 5
+                                name: "Electronics"
+                          children:
+                            type: array
+                            items:
+                              type: object
+                          sample_products:
+                            type: array
+                            items:
+                              type: object
+        '404':
+          description: Category not found
+
+tags:
+  - name: Sales Orders
+    description: Sales order management
+  - name: Purchase Orders
+    description: Purchase order management
+  - name: Products
+    description: Product information and images
+  - name: Reference Data
+    description: Units of measure and categories
