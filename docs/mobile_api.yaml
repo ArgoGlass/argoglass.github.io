@@ -1,0 +1,4882 @@
+---
+swagger: "2.0"
+info:
+  description: "This is API documantation for mobile app developer for ARGO project"
+  version: "1.0.0"
+  title: "Swagger Argo Mobile"
+  termsOfService: "http://swagger.io/terms/"
+  contact:
+    email: "kernandrey1@gmail.com"
+  license:
+    name: "Apache 2.0"
+    url: "http://www.apache.org/licenses/LICENSE-2.0.html"
+host: ""
+basePath: "/v2"
+tags:
+  - name: "Tasks"
+    description: "Endpoints for project tasks"
+  - name: "Office Tasks"
+    description: "Endpoints for office tasks"
+  - name: "Services"
+    description: "Endpoints for task services (jobs)"
+  - name: "Customers"
+    description: "Endpoints for customers"
+  - name: "Notes"
+    description: "Endpoints for task notes"
+  - name: "Attachments"
+    description: "Endpoints for task attachments"
+  - name: "Sale Orders"
+    description: "Endpoints for sale orders"
+  - name: "Invoices"
+    description: "Endpoints for invoices"
+  - name: "SMS"
+    description: "Endpoints for sending SMS"
+  - name: "Locations"
+    description: "Endpoints for posting locations"
+  - name: "Emails"
+    description: "Endpoints for sending emails"
+  - name: "Gantt"
+    description: "Endpoints for Gantt chart functionality"
+  - name: "Calculators"
+    description: "Endpoints for calculator resources"
+schemes:
+  - "https"
+  - "http"
+
+paths:
+  /api/v1/tasks/:
+    get:
+      tags:
+        - "Tasks"
+      summary: "Returns filtered list of assigned tasks with date filtering, timezone support and search capabilities"
+      description: "Returns tasks assigned to the authenticated employee (estimator or technician) with optional date filtering (with timezone support) and customer search. Date filtering matches tasks with either estimate dates (planned_date_begin/date_deadline) OR tech job dates (tech_date_begin/tech_date_deadline) in the specified range. Supports single day filtering (with 'date' only) or date range filtering (with 'date' and 'date_to'). Returns tasks for today by default if no parameters provided."
+      consumes:
+        - "application/json"
+      produces:
+        - "application/json"
+      parameters:
+        - name: date
+          in: query
+          required: false
+          type: string
+          format: date
+          pattern: '^\d{4}-\d{2}-\d{2}$'
+          description: "Filter tasks by start date in YYYY-MM-DD format. Matches tasks with either estimate dates OR tech job dates in the specified range. If 'date_to' is also provided, this serves as the start date for a date range filter. Defaults to today's date if not provided and no search query is given. Date is interpreted in the specified timezone or UTC if no timezone provided."
+          example: "2025-01-20"
+        - name: date_to
+          in: query
+          required: false
+          type: string
+          format: date
+          pattern: '^\d{4}-\d{2}-\d{2}$'
+          description: "Filter tasks by end date in YYYY-MM-DD format. Optional parameter that works with 'date' to create a date range filter. If provided, filters tasks from 'date' to 'date_to' (inclusive). Must not be earlier than 'date'. Date is interpreted in the specified timezone or UTC if no timezone provided."
+          example: "2025-01-25"
+        - name: q
+          in: query
+          required: false
+          type: string
+          description: "Search query to filter tasks by customer name or address. Uses partial matching (ILIKE)."
+          example: "John Doe"
+        - name: timezone
+          in: query
+          required: false
+          type: string
+          description: "Timezone for date interpretation. Must be a valid timezone name from the IANA Time Zone Database. If not provided, UTC is used. Examples: 'America/New_York', 'Europe/London', 'Asia/Tokyo'."
+          example: "America/New_York"
+      responses:
+        200:
+          description: "Successful operation"
+          schema:
+            type: object
+            properties:
+              data:
+                type: array
+                items:
+                  $ref: "#/definitions/TaskSummary"
+        400:
+          description: "Bad request. Invalid date format or timezone."
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+                examples:
+                  invalid_date:
+                    summary: "Invalid date format"
+                    value: "Invalid date format. Use YYYY-MM-DD format."
+                  invalid_timezone:
+                    summary: "Invalid timezone"
+                    value: "Invalid timezone: Invalid/Timezone. Please use a valid timezone name (e.g., America/New_York, Europe/London)."
+        401:
+          description: "Unauthorized. Token is invalid or expired."
+      security:
+        - api_key: [ ]
+
+  /api/v1/task/<int:task_id>:
+    get:
+      tags:
+        - "Tasks"
+      summary: "Returns task details by ID where user is estimator or technician"
+      description: ""
+      consumes:
+        - "application/json"
+      produces:
+        - "application/json"
+      parameters:
+        - name: task_id
+          in: path
+          required: true
+          type: integer
+          description: "ID of the task to return"
+      responses:
+        200:
+          description: "Successful operation"
+          schema:
+            type: object
+            properties:
+              data:
+                $ref: "#/definitions/TaskDetails"
+        401:
+          description: "Unauthorized. Token is invalid or expired."
+        403:
+          description: "Forbidden. User is not assigned to this task."
+        404:
+          description: "Task not found"
+      security:
+        - api_key: [ ]
+
+  /api/v1/task/:
+    post:
+      tags:
+          - "Tasks"
+      summary: "Create a new task"
+      description: ""
+      consumes:
+          - "application/json"
+      produces:
+          - "application/json"
+      parameters:
+          - in: body
+            name: body
+            description: "Task object that needs to be added"
+            required: true
+            schema:
+                type: object
+                properties:
+                  partner_id:
+                      type: integer
+                      example: 27
+                  lead_source_id:
+                      type: integer
+                      example: 2
+      responses:
+          201:
+            description: "Successful operation"
+            schema:
+                type: object
+                properties:
+                  data:
+                      $ref: "#/definitions/TaskDetails"
+          400:
+            description: "Bad request. Invalid input."
+          401:
+            description: "Unauthorized. Token is invalid or expired."
+      security:
+          - api_key: [ ]
+
+  /api/v1/task/<int:task_id>/set-mechanism-status:
+    put:
+      tags:
+        - "Tasks"
+      summary: 'Set mechanism status for the task'
+      description: ""
+      consumes:
+        - "application/json"
+      produces:
+        - "application/json"
+      parameters:
+        - in: body
+          name: body
+          description: "Mechanism status object that needs to be added"
+          required: true
+          schema:
+            type: object
+            properties:
+              mechanism_part_status:
+                type: string
+                required: true
+                description: "Status of the mechanism. Allowed values are: n/a, to_order, ordered, ready_to_pick_up_from_manufacturer, picked_up_from_manufacturer, delivered_to_destination_warehouse"
+                example: "delivered_to_destination_warehouse"
+      responses:
+        200:
+          description: "Successful operation"
+          schema:
+            type: object
+            properties:
+              data:
+                type: string
+                example: "Mechanism part status updated successfully."
+        400:
+          description: 'Bad request. Invalid input.'
+        401:
+          description: "Unauthorized. Token is invalid or expired."
+        403:
+          description: "Forbidden. User is not assigned to this task."
+        404:
+          description: "Task not found"
+
+
+  /api/v1/task/<int:task_id>/services/:
+    get:
+      tags:
+        - "Tasks"
+        - "Services"
+      summary: "Returns all services for the task"
+      description: ""
+      consumes:
+        - "application/json"
+      produces:
+        - "application/json"
+      parameters:
+        - name: task_id
+          in: path
+          required: true
+          type: integer
+          description: "ID of the task for which services to return"
+      responses:
+        200:
+          description: "Successful operation"
+          schema:
+            type: object
+            properties:
+              data:
+                type: array
+                items:
+                  $ref: "#/definitions/ServiceDetails"
+        401:
+          description: "Unauthorized. Token is invalid or expired."
+        403:
+          description: "Forbidden. User is not assigned to this task."
+        404:
+          description: "Task not found"
+      security:
+        - api_key: [ ]
+
+  /api/v1/task/<int:task_id>/service:
+    post:
+      tags:
+        - "Tasks"
+        - "Services"
+      summary: "Create a service for the task"
+      description: ""
+      consumes:
+        - "application/json"
+      produces:
+        - "application/json"
+      parameters:
+        - name: task_id
+          in: path
+          required: true
+          type: integer
+          description: "ID of the task to which the service belongs"
+        - in: body
+          name: body
+          description: "Service object that needs to be added"
+          required: true
+          schema:
+            $ref: "#/definitions/ServicePost"
+      responses:
+        201:
+          description: "Successful operation"
+          schema:
+            type: object
+            properties:
+              data:
+                $ref: "#/definitions/ServiceDetails"
+        400:
+          description: "Bad request. Invalid input."
+        401:
+          description: "Unauthorized. Token is invalid or expired."
+        403:
+          description: "Forbidden. User is not assigned to this task."
+        404:
+          description: "Task not found"
+      security:
+        - api_key: [ ]
+
+  /api/v1/service/<int:service_id>/:
+    put:
+        tags:
+            - "Services"
+        summary: "Update service details by ID"
+        description: ""
+        consumes:
+            - "application/json"
+        produces:
+            - "application/json"
+        parameters:
+            - name: service_id
+              in: path
+              required: true
+              type: integer
+              description: "ID of the service to update"
+            - in: body
+              name: body
+              description: "Service object that needs to be updated"
+              required: true
+              schema:
+                  $ref: "#/definitions/ServicePost"
+        responses:
+            200:
+              description: "Successful operation"
+              schema:
+                  type: object
+                  properties:
+                    data:
+                        $ref: "#/definitions/ServiceDetails"
+            400:
+              description: "Bad request. Invalid input."
+            401:
+              description: "Unauthorized. Token is invalid or expired."
+            403:
+              description: "Forbidden. User is not assigned to this task."
+            404:
+              description: "Service not found"
+        security:
+            - api_key: [ ]
+
+  /api/v1/calculators/fwr.xml:
+    get:
+      tags:
+        - "Calculators"
+      summary: "Serve the static FWR.xml calculator file"
+      description: "Returns the FWR.xml calculator file for mobile app usage"
+      produces:
+        - "application/xml"
+      responses:
+        200:
+          description: "XML file successfully returned"
+          schema:
+            type: string
+            format: binary
+        404:
+          description: "FWR.xml file not found"
+        500:
+          description: "Internal server error"
+      security:
+        - api_key: [ ]
+
+  /api/v1/customer/:
+    post:
+      tags:
+        - "Customers"
+      summary: "Create a new customer"
+      description: ""
+      consumes:
+        - "application/json"
+      produces:
+        - "application/json"
+      parameters:
+        - in: body
+          name: body
+          description: "Customer object that needs to be updated. All fields are optional, but at least one field must be provided."
+          required: true
+          schema:
+            type: object
+            properties:
+              name:
+                type: string
+                example: "Brandon Freeman"
+              phone:
+                type: string
+                example: "+1-202-555-0173"
+              mobile:
+                type: string
+                example: "+1-202-555-0173"
+              email:
+                type: string
+                example: "name@domain.com"
+              street:
+                type: string
+                example: "4557 De Silva St"
+              street2:
+                type: string
+                example: "Apt 123"
+              city:
+                type: string
+                example: "Fremont"
+              zip:
+                type: string
+                example: "94538"
+              state_id:
+                type: integer
+                example: 1
+              country_id:
+                type: integer
+                example: 1
+      responses:
+        201:
+          description: "Successful operation. Customer created."
+          schema:
+            type: object
+            properties:
+              data:
+                type: string
+                example: "Customer created successfully."
+        400:
+          description: "Bad request. Invalid input."
+        401:
+          description: "Unauthorized. Token is invalid or expired."
+      security:
+        - api_key: [ ]
+
+  /api/v1/customer/<int:customer_id>:
+    get:
+      tags:
+        - "Customers"
+      summary: "Returns customer details by ID"
+      description: ""
+      consumes:
+        - "application/json"
+      produces:
+        - "application/json"
+      parameters:
+        - name: customer_id
+          in: path
+          required: true
+          type: integer
+          description: "ID of the customer to return"
+      responses:
+        200:
+          description: "Successful operation"
+          schema:
+            type: object
+            properties:
+              data:
+                $ref: "#/definitions/CustomerDetails"
+        401:
+          description: "Unauthorized. Token is invalid or expired."
+        404:
+          description: "Customer not found"
+      security:
+        - api_key: [ ]
+    put:
+      tags:
+        - "Customers"
+      summary: "Update customer details by ID"
+      description: ""
+      consumes:
+        - "application/json"
+      produces:
+        - "application/json"
+      parameters:
+        - name: customer_id
+          in: path
+          required: true
+          type: integer
+          description: "ID of the customer to update"
+        - in: body
+          name: body
+          description: "Customer object that needs to be updated. All fields are optional, but at least one field must be provided."
+          required: true
+          schema:
+            type: object
+            properties:
+              name:
+                type: string
+                example: "Brandon Freeman"
+              phone:
+                type: string
+                example: "+1-202-555-0173"
+              mobile:
+                type: string
+                example: "+1-202-555-0173"
+              email:
+                type: string
+                example: "name@domain.com"
+              street:
+                type: string
+                example: "4557 De Silva St"
+              street2:
+                type: string
+                example: "Apt 123"
+              city:
+                type: string
+                example: "Fremont"
+              zip:
+                type: string
+                example: "94538"
+              state_id:
+                type: integer
+                example: 1
+              country_id:
+                type: integer
+                example: 1
+      responses:
+        200:
+          description: "Successful operation"
+          schema:
+            type: object
+            properties:
+              data:
+                type: string
+                example: "Customer updated successfully."
+        401:
+          description: "Unauthorized. Token is invalid or expired."
+        404:
+          description: "Customer not found"
+      security:
+        - api_key: [ ]
+
+  /api/v1/countries/:
+    get:
+      tags:
+        - "Customers"
+      summary: "Returns all countries"
+      description: ""
+      consumes:
+        - "application/json"
+      produces:
+        - "application/json"
+      responses:
+        200:
+          description: "Successful operation"
+          schema:
+            type: object
+            properties:
+              data:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: integer
+                      example: 233
+                    code:
+                      type: string
+                      example: "US"
+                    name:
+                      type: string
+                      example: "United States"
+        401:
+          description: "Unauthorized. Token is invalid or expired."
+      security:
+        - api_key: [ ]
+
+  /api/v1/states/<int:country_id>:
+    get:
+      tags:
+        - "Customers"
+      summary: "Returns all states for the given country"
+      description: ""
+      consumes:
+        - "application/json"
+      produces:
+        - "application/json"
+      parameters:
+        - name: country_id
+          in: path
+          required: true
+          type: integer
+          description: "ID of the country for which to return states"
+      responses:
+        200:
+          description: "Successful operation"
+          schema:
+            type: object
+            properties:
+              data:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: integer
+                      example: 1
+                    code:
+                      type: string
+                      example: "CA"
+                    name:
+                      type: string
+                      example: "California"
+        401:
+          description: "Unauthorized. Token is invalid or expired."
+        404:
+          description: "Country not found"
+      security:
+        - api_key: [ ]
+
+  /api/v1/lead_sources/:
+    get:
+      tags:
+        - "Tasks"
+      summary: "Returns all lead sources"
+      description: ""
+      consumes:
+        - "application/json"
+      produces:
+        - "application/json"
+      responses:
+        200:
+          description: "Successful operation"
+          schema:
+            type: object
+            properties:
+              data:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: integer
+                      example: 1
+                    name:
+                      type: string
+                      example: "Website"
+        401:
+          description: "Unauthorized. Token is invalid or expired."
+      security:
+        - api_key: [ ]
+
+  /api/v1/task/<int:task_id>/notes:
+    get:
+      tags:
+        - "Tasks"
+        - "Notes"
+      summary: "Returns all notes for the task"
+      description: ""
+      consumes:
+        - "application/json"
+      produces:
+        - "application/json"
+      responses:
+        200:
+          description: "Successful operation"
+          schema:
+            type: object
+            properties:
+              data:
+                type: array
+                items:
+                  $ref: "#/definitions/Note"
+        401:
+          description: "Unauthorized. Token is invalid or expired."
+        403:
+          description: "Forbidden. User is not assigned to this task."
+        404:
+          description: "Task not found"
+      security:
+        - api_key: [ ]
+
+  /api/v1/task/<int:task_id>/note:
+    post:
+      tags:
+        - "Tasks"
+        - "Notes"
+      summary: "Create a note for the task"
+      description: ""
+      consumes:
+        - "application/json"
+      produces:
+        - "application/json"
+      parameters:
+        - in: body
+          name: body
+          description: "Note object that needs to be added"
+          required: true
+          schema:
+            type: object
+            properties:
+              note:
+                type: string
+                required: true
+                description: "Text of the note"
+                example: "Hello, this is a note."
+
+      responses:
+        201:
+          description: "Successful operation"
+          schema:
+            type: object
+            properties:
+              data:
+                $ref: "#/definitions/Note"
+        401:
+          description: "Unauthorized. Token is invalid or expired."
+      security:
+        - api_key: [ ]
+
+  /api/v1/tasks/note/<int:note_id>/:
+    put:
+      tags:
+        - "Notes"
+      summary: "Update a note"
+      description: ""
+      consumes:
+        - "application/json"
+      produces:
+        - "application/json"
+      parameters:
+        - name: note_id
+          in: path
+          required: true
+          type: integer
+          description: "ID of the note to update"
+        - in: body
+          name: body
+          description: "Note object that needs to be updated"
+          required: true
+          schema:
+            type: object
+            properties:
+              note:
+                type: string
+                required: true
+                description: "Text of the note"
+                example: "Hello, this is an updated note."
+      responses:
+        200:
+          description: "Successful operation"
+          schema:
+            type: object
+            properties:
+              data:
+                $ref: "#/definitions/Note"
+        401:
+          description: "Unauthorized. Token is invalid or expired."
+        404:
+          description: "Note not found"
+      security:
+        - api_key: [ ]
+
+  /api/v1/task/note/{note_id}:
+    delete:
+      tags:
+        - "Notes"
+      summary: "Delete a note"
+      description: "Deletes a specific note by ID. Only the note owner can delete their notes."
+      produces:
+        - "application/json"
+      parameters:
+        - name: note_id
+          in: path
+          required: true
+          type: integer
+          description: "ID of the note to delete"
+      responses:
+        204:
+          description: "Note successfully deleted"
+        401:
+          description: "Unauthorized. Token is invalid or expired."
+        403:
+          description: "Forbidden. You are not the owner of this note."
+        404:
+          description: "Note not found"
+      security:
+        - api_key: [ ]
+    get:
+      tags:
+        - "Notes"
+      summary: "Get a specific note by ID"
+      description: "Returns a specific note by ID. Employee must be assigned to the task."
+      produces:
+        - "application/json"
+      parameters:
+        - name: note_id
+          in: path
+          required: true
+          type: integer
+          description: "ID of the note to retrieve"
+      responses:
+        200:
+          description: "Successful operation"
+          schema:
+            type: object
+            properties:
+              data:
+                $ref: "#/definitions/Note"
+        401:
+          description: "Unauthorized. Token is invalid or expired."
+        403:
+          description: "Forbidden. You are not assigned to this task."
+        404:
+          description: "Note not found"
+      security:
+        - api_key: [ ]
+
+  /api/v1/attachment/{attachment_id}:
+    get:
+      tags:
+        - "Attachments"
+      summary: "Returns attachment by ID in base64 format"
+      description: ""
+      consumes:
+        - "application/json"
+      produces:
+        - "application/json"
+      parameters:
+        - name: attachment_id
+          in: path
+          required: true
+          type: integer
+          description: "ID of the attachment to return"
+      responses:
+        200:
+          description: "Successful operation"
+          schema:
+            type: object
+            properties:
+              data:
+                $ref: "#/definitions/AttachmentBase64"
+        401:
+          description: "Unauthorized. Token is invalid or expired."
+        404:
+          description: "Attachment not found"
+      security:
+        - api_key: [ ]
+    delete:
+      tags:
+        - "Attachments"
+      summary: "Delete an attachment"
+      description: "Deletes a specific attachment by ID. Only attachments from project.task.note can be deleted and only by the note owner."
+      produces:
+        - "application/json"
+      parameters:
+        - name: attachment_id
+          in: path
+          required: true
+          type: integer
+          description: "ID of the attachment to delete"
+      responses:
+        204:
+          description: "Attachment successfully deleted"
+        401:
+          description: "Unauthorized. Token is invalid or expired."
+        403:
+          description: "Forbidden. Only note attachments can be deleted or you are not the owner of the note."
+        404:
+          description: "Attachment not found"
+      security:
+        - api_key: [ ]
+
+  /api/v1/service/<int:service_id>/attachment/:
+    post:
+      tags:
+        - "Attachments"
+      summary: "Upload an attachment for the service and create a copy to the task"
+      description: ""
+      consumes:
+        - "application/json"
+      produces:
+        - "application/json"
+      parameters:
+        - name: service_id
+          in: path
+          required: true
+          type: integer
+          description: "ID of the service to which the attachment belongs"
+        - in: body
+          name: body
+          description: "Attachment object that needs to be added"
+          required: true
+          schema:
+            type: object
+            properties:
+              name:
+                type: string
+                example: "document.pdf"
+              data_base64:
+                type: string
+                example: "JVBERi0xLjQKJeLjz9MKNCAwIG9iago8PC9UeXBlL1hSZW5kZXIvUGFnZXMvUGFnZVsvNjYv..."
+      responses:
+        201:
+          description: "Successful operation"
+          schema:
+            type: object
+            properties:
+              data:
+                $ref: "#/definitions/Attachment"
+        400:
+          description: "Bad request. Invalid input."
+        401:
+          description: "Unauthorized. Token is invalid or expired."
+        403:
+          description: "Forbidden. User is not assigned to this service."
+        404:
+          description: "Service not found"
+      security:
+        - api_key: [ ]
+
+  /api/v1/task/<int:service_id>/attachment/:
+    post:
+      tags:
+        - "Attachments"
+        - "Tasks"
+      summary: "Upload an attachment for the task"
+      description: ""
+      consumes:
+        - "application/json"
+      produces:
+        - "application/json"
+      parameters:
+        - name: task_id
+          in: path
+          required: true
+          type: integer
+          description: "ID of the task to which the attachment belongs"
+        - in: body
+          name: body
+          description: "Attachment object that needs to be added"
+          required: true
+          schema:
+            type: object
+            properties:
+              name:
+                type: string
+                example: "document.pdf"
+              data_base64:
+                type: string
+                example: "JVBERi0xLjQKJeLjz9MKNCAwIG9iago8PC9UeXBlL1hSZW5kZXIvUGFnZXMvUGFnZVsvNjYv..."
+      responses:
+        201:
+          description: "Successful operation"
+          schema:
+            type: object
+            properties:
+              data:
+                $ref: "#/definitions/Attachment"
+        400:
+          description: "Bad request. Invalid input."
+        401:
+          description: "Unauthorized. Token is invalid or expired."
+        403:
+          description: "Forbidden. User is not assigned to this task."
+        404:
+          description: "Service not found"
+      security:
+        - api_key: [ ]
+
+  /api/v1/task/note/<int:note_id>/attachment/:
+    post:
+      tags:
+        - "Notes"
+        - "Attachments"
+      summary: "Upload an attachment for a task note"
+      description: "Creates an attachment and associates it with a specific task note. The employee must be assigned to the task (as estimator or technician) to upload attachments."
+      consumes:
+        - "application/json"
+      produces:
+        - "application/json"
+      parameters:
+        - name: note_id
+          in: path
+          required: true
+          type: integer
+          description: "ID of the task note to which the attachment will be added"
+        - in: body
+          name: body
+          description: "Attachment object that needs to be added"
+          required: true
+          schema:
+            type: object
+            required:
+              - name
+              - data_base64
+            properties:
+              name:
+                type: string
+                description: "File name with extension"
+                example: "photo.jpg"
+              data_base64:
+                type: string
+                description: "Base64 encoded file content"
+                example: "JVBERi0xLjQKJeLjz9MKNCAwIG9iago8PC9UeXBlL1hSZW5kZXIvUGFnZXMvUGFnZVsvNjYv..."
+      responses:
+        201:
+          description: "Attachment created successfully"
+          schema:
+            type: object
+            properties:
+              data:
+                $ref: "#/definitions/Attachment"
+        400:
+          description: "Bad request. Missing required fields (name or data_base64)."
+        401:
+          description: "Unauthorized. Token is invalid or expired."
+        403:
+          description: "Forbidden. You are not assigned to this task."
+        404:
+          description: "Task note not found."
+      security:
+        - api_key: [ ]
+
+  /api/v1/customer/<int:customer_id>/attachment/:
+    post:
+      tags:
+        - "Attachments"
+        - "Customers"
+      summary: "Upload an attachment for the customer"
+      description: ""
+      consumes:
+        - "application/json"
+      produces:
+        - "application/json"
+      parameters:
+        - name: task_id
+          in: path
+          required: true
+          type: integer
+          description: "ID of the task to which the attachment belongs"
+        - in: body
+          name: body
+          description: "Attachment object that needs to be added"
+          required: true
+          schema:
+            type: object
+            properties:
+              name:
+                type: string
+                example: "document.pdf"
+              data_base64:
+                type: string
+                example: "JVBERi0xLjQKJeLjz9MKNCAwIG9iago8PC9UeXBlL1hSZW5kZXIvUGFnZXMvUGFnZVsvNjYv..."
+      responses:
+        201:
+          description: "Successful operation"
+          schema:
+            type: object
+            properties:
+              data:
+                $ref: "#/definitions/Attachment"
+        400:
+          description: "Bad request. Invalid input."
+        401:
+          description: "Unauthorized. Token is invalid or expired."
+        404:
+          description: "Service not found"
+      security:
+        - api_key: [ ]
+
+  /api/v1/task/<int:task_id>/sale_orders/:
+    get:
+      tags:
+        - "Tasks"
+        - "Services"
+        - "Sale Orders"
+      summary: "Returns all sale orders for the task"
+      description: ""
+      consumes:
+        - "application/json"
+      produces:
+        - "application/json"
+      parameters:
+        - name: task_id
+          in: path
+          required: true
+          type: integer
+          description: "ID of the task for which sale orders to return"
+      responses:
+        200:
+          description: "Successful operation"
+          schema:
+            type: object
+            properties:
+              data:
+                type: array
+                items:
+                  $ref: "#/definitions/SaleOrder"
+        401:
+          description: "Unauthorized. Token is invalid or expired."
+        403:
+          description: "Forbidden. User is not assigned to this task."
+        404:
+          description: "Task not found"
+      security:
+        - api_key: [ ]
+
+  /api/v1/task/<int:task_id>/sale_order/:
+    post:
+      tags:
+        - "Tasks"
+        - "Sale Orders"
+      summary: "Create a new sale order for a specific task"
+      description: "Creates a new sale order (quotation) for the specified task. The task must have a customer assigned."
+      consumes:
+        - "application/json"
+      produces:
+        - "application/json"
+      parameters:
+        - name: task_id
+          in: path
+          required: true
+          type: integer
+          description: "ID of the task for which to create a sale order"
+        - name: body
+          in: body
+          required: false
+          description: "Optional sale order details"
+          schema:
+            type: object
+            properties:
+              note:
+                type: string
+                description: "Notes for the sale order"
+                example: "Customer requested expedited delivery"
+              validity_date:
+                type: string
+                format: date
+                description: "Validity date for the quotation in YYYY-MM-DD format"
+                example: "2025-02-15"
+              payment_term_id:
+                type: integer
+                description: "Payment term ID"
+                example: 1
+              pricelist_id:
+                type: integer
+                description: "Pricelist ID"
+                example: 1
+      responses:
+        201:
+          description: "Sale order created successfully"
+          schema:
+            type: object
+            properties:
+              data:
+                $ref: "#/definitions/SaleOrder"
+        400:
+          description: "Bad request. Task must have a customer assigned."
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+                example: "Task must have a customer assigned to create a sale order."
+        401:
+          description: "Unauthorized. Token is invalid or expired."
+        403:
+          description: "Forbidden. User is not assigned to this task."
+        404:
+          description: "Task not found"
+        500:
+          description: "Internal server error. Failed to create sale order."
+      security:
+        - api_key: [ ]
+
+  /api/v1/sale_order/<int:sale_order_id>/:
+    get:
+      tags:
+        - "Sale Orders"
+      summary: "Get detailed information about a specific sale order"
+      description: "Returns detailed information about a sale order including order lines, amounts, and related data."
+      produces:
+        - "application/json"
+      parameters:
+        - name: sale_order_id
+          in: path
+          required: true
+          type: integer
+          description: "ID of the sale order to retrieve"
+      responses:
+        200:
+          description: "Successful operation"
+          schema:
+            type: object
+            properties:
+              data:
+                $ref: "#/definitions/SaleOrderDetailed"
+        400:
+          description: "Bad request. Sale order is not associated with a task."
+        401:
+          description: "Unauthorized. Token is invalid or expired."
+        403:
+          description: "Forbidden. User is not assigned to this task."
+        404:
+          description: "Sale order not found"
+      security:
+        - api_key: [ ]
+    put:
+      tags:
+        - "Sale Orders"
+      summary: "Update an existing sale order"
+      description: "Updates an existing sale order. Only draft and sent orders can be modified."
+      consumes:
+        - "application/json"
+      produces:
+        - "application/json"
+      parameters:
+        - name: sale_order_id
+          in: path
+          required: true
+          type: integer
+          description: "ID of the sale order to update"
+        - name: body
+          in: body
+          required: true
+          description: "Sale order update data"
+          schema:
+            type: object
+            properties:
+              partner_id:
+                type: integer
+                description: "Customer ID"
+                example: 123
+              note:
+                type: string
+                description: "Notes for the sale order"
+                example: "Updated delivery instructions"
+              validity_date:
+                type: string
+                format: date
+                description: "Validity date for the quotation in YYYY-MM-DD format"
+                example: "2025-02-15"
+              payment_term_id:
+                type: integer
+                description: "Payment term ID"
+                example: 1
+              pricelist_id:
+                type: integer
+                description: "Pricelist ID"
+                example: 1
+              user_id:
+                type: integer
+                description: "Salesperson user ID"
+                example: 1
+              team_id:
+                type: integer
+                description: "Sales team ID"
+                example: 1
+      responses:
+        200:
+          description: "Sale order updated successfully"
+          schema:
+            type: object
+            properties:
+              data:
+                $ref: "#/definitions/SaleOrder"
+        400:
+          description: "Bad request. Invalid data or sale order cannot be modified."
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+                examples:
+                  no_data:
+                    summary: "No data provided"
+                    value: "No data provided for update."
+                  invalid_state:
+                    summary: "Invalid state"
+                    value: "Cannot modify sale order in sale state. Only draft and sent orders can be modified."
+                  invalid_partner:
+                    summary: "Invalid partner"
+                    value: "Invalid partner_id provided."
+        401:
+          description: "Unauthorized. Token is invalid or expired."
+        403:
+          description: "Forbidden. User is not assigned to this task."
+        404:
+          description: "Sale order not found"
+        500:
+          description: "Internal server error. Failed to update sale order."
+      security:
+        - api_key: [ ]
+
+  /api/v1/estimate_job_rooms:
+    get:
+      tags:
+        - "Services"
+      summary: "Returns all estimate job rooms"
+      description: ""
+      consumes:
+        - "application/json"
+      produces:
+        - "application/json"
+      responses:
+        200:
+          description: "Successful operation"
+          schema:
+            type: object
+            properties:
+              data:
+                type: array
+                items:
+                  $ref: "#/definitions/EstimateJobRoom"
+        401:
+          description: "Unauthorized. Token is invalid or expired."
+      security:
+        - api_key: [ ]
+
+  /api/v1/products/:
+    get:
+      tags:
+        - "Services"
+      summary: "Returns all products in category 'All / Services' and subcategories"
+      description: ""
+      consumes:
+        - "application/json"
+      produces:
+        - "application/json"
+      responses:
+        200:
+          description: "Successful operation"
+          schema:
+            type: object
+            properties:
+              data:
+                type: array
+                items:
+                  $ref: "#/definitions/Product"
+        401:
+          description: "Unauthorized. Token is invalid or expired."
+      security:
+        - api_key: [ ]
+
+  /api/v1/sale_order/<int:sale_order_id>/portal_url/:
+    get:
+      tags:
+        - "Services"
+        - "Sale Orders"
+      summary: "Returns portal URL for the sale order by ID. Customer can use it to sign, pay, and download the sale order."
+      description: ""
+      consumes:
+        - "application/json"
+      produces:
+        - "application/json"
+      parameters:
+        - name: sale_order_id
+          in: path
+          required: true
+          type: integer
+          description: "ID of the sale order to return portal URL for"
+      responses:
+        200:
+          description: "Successful operation"
+          schema:
+            type: object
+            properties:
+              data:
+                type: string
+                example: "https://example.com/my/orders/38?access_token=3acfce93-03dc-4945-9d2f-83dc607dfeb0"
+        401:
+          description: "Unauthorized. Token is invalid or expired."
+        404:
+          description: "Sale order not found"
+      security:
+        - api_key: [ ]
+
+  /api/v1/invoice/<int:invoice_id>/portal_url/:
+    get:
+      tags:
+        - "Invoices"
+      summary: "Returns portal URL for the invoice by ID. Customer can use it to view and download the invoice."
+      description: ""
+      consumes:
+        - "application/json"
+      produces:
+        - "application/json"
+      parameters:
+        - name: invoice_id
+          in: path
+          required: true
+          type: integer
+          description: "ID of the invoice to return portal URL for"
+      responses:
+        200:
+          description: "Successful operation"
+          schema:
+            type: object
+            properties:
+              data:
+                type: string
+                example: "https://example.com/my/invoices/42?access_token=3acfce93-03dc-4945-9d2f-83dc607dfeb0"
+        400:
+          description: "Bad request. Document is not an invoice."
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+                example: "Document is not an invoice."
+        401:
+          description: "Unauthorized. Token is invalid or expired."
+        403:
+          description: "Forbidden. You are not assigned to this task."
+        404:
+          description: "Invoice not found or related sale order not found."
+      security:
+        - api_key: [ ]
+
+  /api/v1/task/<int:task_id>/invoices/:
+    get:
+      tags:
+        - "Tasks"
+        - "Invoices"
+      summary: "Returns all invoices for the task"
+      description: "Returns all invoices related to the task through sale orders. Includes basic invoice information."
+      consumes:
+        - "application/json"
+      produces:
+        - "application/json"
+      parameters:
+        - name: task_id
+          in: path
+          required: true
+          type: integer
+          description: "ID of the task for which invoices to return"
+      responses:
+        200:
+          description: "Successful operation"
+          schema:
+            type: object
+            properties:
+              data:
+                type: array
+                items:
+                  $ref: "#/definitions/Invoice"
+        401:
+          description: "Unauthorized. Token is invalid or expired."
+        403:
+          description: "Forbidden. User is not assigned to this task."
+        404:
+          description: "Task not found"
+      security:
+        - api_key: [ ]
+
+  /api/v1/invoice/<int:invoice_id>/email_template/:
+    post:
+      tags:
+        - "Emails"
+        - "Invoices"
+      summary: "Create and returns email template object for the invoice by ID."
+      description: "Returns email template object for the invoice by ID. To send the email use /api/v1/mail_compose/<int:mail_compose_id>/send/"
+      consumes:
+        - "application/json"
+      produces:
+        - "application/json"
+      parameters:
+        - name: invoice_id
+          in: path
+          required: true
+          type: integer
+          description: "ID of the invoice to return email template for"
+      responses:
+        200:
+          description: "Successful operation"
+          schema:
+            $ref: "#/definitions/MailCompose"
+        400:
+          description: "Bad request. Document is not an invoice."
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+                example: "Document is not an invoice."
+        401:
+          description: "Unauthorized. Token is invalid or expired."
+        403:
+          description: "Forbidden. User is not assigned to this task."
+        404:
+          description: "Invoice not found or related sale order not found."
+        500:
+          description: "Invoice email template not found."
+
+  /api/v1/customer/<int:customer_id>/send_sms/:
+    post:
+      tags:
+        - "Customers"
+        - "SMS"
+      summary: "Send SMS to the customer"
+      description: ""
+      consumes:
+        - "application/json"
+      produces:
+        - "application/json"
+      parameters:
+        - name: customer_id
+          in: path
+          required: true
+          type: integer
+          description: "ID of the customer to send SMS to"
+        - in: body
+          name: body
+          description: "SMS object that needs to be sent"
+          required: true
+          schema:
+            type: object
+            properties:
+              message:
+                type: string
+                example: "Hello, this is a test message."
+      responses:
+        200:
+          description: "Successful operation"
+          schema:
+            $ref: "#/definitions/SMSDetails"
+        400:
+          description: "Bad request. Invalid input."
+        401:
+          description: "Unauthorized. Token is invalid or expired."
+        404:
+          description: "Customer not found"
+      security:
+        - api_key: []
+
+ 
+
+  /api/v1/task/<int:task_id>/send_on_my_way_sms/:
+    post:
+      tags:
+        - "Tasks"
+        - "SMS"
+      summary: "Send SMS to the customer. Uses 'On My Way' template."
+      description: ""
+      consumes:
+        - "application/json"
+      produces:
+        - "application/json"
+      parameters:
+        - name: task_id
+          in: path
+          required: true
+          type: integer
+          description: "ID of the task to send SMS for"
+      responses:
+        200:
+          description: "Successful operation"
+          schema:
+            $ref: "#/definitions/SMSDetails"
+        400:
+          description: "Bad request. Invalid input."
+        401:
+          description: "Unauthorized. Token is invalid or expired."
+        404:
+          description: "Task not found"
+
+  /api/v1/sms/<int:sms_id>/:
+    get:
+      tags:
+        - "SMS"
+      summary: "Get SMS details (with status) by ID."
+      description: ""
+      consumes:
+        - "application/json"
+      produces:
+        - "application/json"
+      parameters:
+        - name: sms_id
+          in: path
+          required: true
+          type: integer
+          description: "ID of the SMS to return"
+      responses:
+        200:
+          description: "Successful operation"
+          schema:
+            $ref: "#/definitions/SMSDetails"
+        401:
+          description: "Unauthorized. Token is invalid or expired."
+        404:
+          description: "SMS not found"
+
+  /api/v1/task/<int:task_id>/start_working/:
+    post:
+      tags:
+        - Tasks
+      summary: "Create a log for the start of work on the task"
+      description: ""
+      consumes:
+          - "application/json"
+      produces:
+          - "application/json"
+      parameters:
+          - name: task_id
+            in: path
+            required: true
+            type: integer
+            description: "ID of the task to start working on"
+      responses:
+          200:
+              description: "Successful operation"
+              schema:
+                  type: object
+                  properties:
+                      data:
+                          type: string
+                          example: "Message logged successfully."
+          401:
+              description: "Unauthorized. Token is invalid or expired."
+          403:
+              description: "Forbidden. User is not assigned to this task."
+          404:
+              description: "Task not found"
+
+  /api/v1/task/<int:task_id>/finish_working/:
+    post:
+      tags:
+        - Tasks
+      summary: "Create a log for the finish of work on the task"
+      description: ""
+      consumes:
+          - "application/json"
+      produces:
+          - "application/json"
+      parameters:
+          - name: task_id
+            in: path
+            required: true
+            type: integer
+            description: "ID of the task to finish working on"
+      responses:
+          200:
+              description: "Successful operation"
+              schema:
+                  type: object
+                  properties:
+                      data:
+                          type: string
+                          example: "Message logged successfully."
+          401:
+              description: "Unauthorized. Token is invalid or expired."
+          403:
+              description: "Forbidden. User is not assigned to this task."
+          404:
+              description: "Task not found"
+
+  /api/v1/post_location/:
+    post:
+      tags:
+        - Locations
+      summary: "Post location of the user"
+      description: ""
+      consumes:
+          - "application/json"
+      produces:
+          - "application/json"
+      parameters:
+          - in: body
+            name: body
+            description: "Location object that needs to be posted"
+            required: true
+            schema:
+                type: object
+                properties:
+                    latitude:
+                        type: number
+                        example: 37.7749
+                    longitude:
+                        type: number
+                        example: -122.4194
+      responses:
+          200:
+              description: "Successful operation"
+              schema:
+                  type: object
+                  properties:
+                      data:
+                          type: string
+                          example: "Location posted successfully."
+          401:
+              description: "Unauthorized. Token is invalid or expired."
+          403:
+              description: "Forbidden. User is not assigned to this task."
+
+  /api/v1/office_tasks:
+    get:
+      tags:
+        - "Office Tasks"
+      summary: "Returns all office tasks accessible to the employee"
+      description: "Returns office tasks where employee is assigned directly (employee_ids), or as estimator/technician on the related project task. Includes parts purchase logs for each task."
+      consumes:
+        - "application/json"
+      produces:
+        - "application/json"
+      responses:
+        200:
+          description: "Successful operation"
+          schema:
+            type: object
+            properties:
+              data:
+                type: array
+                items:
+                    $ref: "#/definitions/OfficeTask"
+        401:
+          description: "Unauthorized. Token is invalid or expired."
+      security:
+        - api_key: [ ]
+    post:
+      tags:
+        - "Office Tasks"
+      summary: "Create a new office task and assign the authenticated employee"
+      description: "Creates a new office task. The authenticated employee is always assigned to the created task. Optionally pass employee_ids to add others."
+      consumes:
+        - "application/json"
+      produces:
+        - "application/json"
+      parameters:
+        - in: body
+          name: body
+          required: true
+          schema:
+            type: object
+            properties:
+              description:
+                type: string
+              date_deadline:
+                type: string
+                format: date-time
+              category_id:
+                type: integer
+              status_id:
+                type: integer
+              task_id:
+                type: integer
+              employee_ids:
+                type: array
+                items:
+                  type: integer
+      responses:
+        201:
+          description: "Successfully created"
+          schema:
+            type: object
+            properties:
+              data:
+                $ref: "#/definitions/OfficeTask"
+        400:
+          description: "Bad request. Invalid input."
+        401:
+          description: "Unauthorized. Token is invalid or expired."
+      security:
+        - api_key: [ ]
+
+  /api/v1/office_tasks/categories:
+    get:
+      tags:
+        - "Office Tasks"
+      summary: "Returns all available office task categories"
+      description: "Returns a list of all office task categories for use when creating or filtering tasks."
+      produces:
+        - "application/json"
+      responses:
+        200:
+          description: "Successful operation"
+          schema:
+            type: object
+            properties:
+              data:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: integer
+                    name:
+                      type: string
+        401:
+          description: "Unauthorized. Token is invalid or expired."
+      security:
+        - api_key: [ ]
+
+  /api/v1/office_tasks/statuses:
+    get:
+      tags:
+        - "Office Tasks"
+      summary: "Returns all available office task statuses"
+      description: "Returns a list of all office task statuses for use when creating or updating tasks."
+      produces:
+        - "application/json"
+      responses:
+        200:
+          description: "Successful operation"
+          schema:
+            type: object
+            properties:
+              data:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: integer
+                    name:
+                      type: string
+        401:
+          description: "Unauthorized. Token is invalid or expired."
+      security:
+        - api_key: [ ]
+
+  /api/v1/office_tasks/<int:office_task_id>:
+    get:
+      tags:
+        - "Office Tasks"
+      summary: "Returns a single office task by ID"
+      description: "Returns detailed information about a specific office task including attachments and parts purchase logs. Employee must have access through direct assignment or via related project task."
+      produces:
+        - "application/json"
+      parameters:
+        - name: office_task_id
+          in: path
+          required: true
+          type: integer
+          description: "ID of the office task"
+      responses:
+        200:
+          description: "Successful operation"
+          schema:
+            type: object
+            properties:
+              data:
+                $ref: "#/definitions/OfficeTask"
+        401:
+          description: "Unauthorized. Token is invalid or expired."
+        404:
+          description: "Office task not found or access denied"
+      security:
+        - api_key: [ ]
+    put:
+      tags:
+        - "Office Tasks"
+      summary: "Update an existing office task"
+      description: "Updates allowed fields on an office task. Employee cannot remove themselves from employee_ids."
+      consumes:
+        - "application/json"
+      produces:
+        - "application/json"
+      parameters:
+        - name: office_task_id
+          in: path
+          required: true
+          type: integer
+          description: "ID of the office task to update"
+        - in: body
+          name: body
+          description: "Office task fields to update"
+          schema:
+            type: object
+            properties:
+              description:
+                type: string
+                example: "Updated task description"
+              date_deadline:
+                type: string
+                format: date-time
+                example: "2025-05-15 10:00:00"
+              category_id:
+                type: integer
+                example: 1
+              status_id:
+                type: integer
+                example: 2
+              task_id:
+                type: integer
+                example: 123
+              employee_ids:
+                type: array
+                items:
+                  type: integer
+                example: [1, 2, 3]
+                description: "List of employee IDs. Authenticated employee must remain in the list."
+      responses:
+        200:
+          description: "Successful operation"
+          schema:
+            type: object
+            properties:
+              data:
+                $ref: "#/definitions/OfficeTask"
+        400:
+          description: "Bad request. Cannot remove yourself from the task."
+        401:
+          description: "Unauthorized. Token is invalid or expired."
+        404:
+          description: "Office task not found or access denied"
+      security:
+        - api_key: [ ]
+
+  /api/v1/office_tasks/<int:office_task_id>/attachments:
+    post:
+      tags:
+        - "Attachments"
+        - "Office Tasks"
+      summary: "Upload attachments for the office task"
+      consumes:
+        - "application/json"
+      produces:
+        - "application/json"
+      parameters:
+        - name: office_task_id
+          in: path
+          required: true
+          type: integer
+      responses:
+        201:
+          description: "Created"
+        400:
+          description: "Bad request"
+      security:
+        - api_key: [ ]
+
+  /api/v1/office_tasks/<int:office_task_id>/attachments/<int:attachment_id>:
+    delete:
+      tags:
+        - "Attachments"
+        - "Office Tasks"
+      summary: "Delete an attachment from an office task"
+      produces:
+        - "application/json"
+      parameters:
+        - name: office_task_id
+          in: path
+          required: true
+          type: integer
+        - name: attachment_id
+          in: path
+          required: true
+          type: integer
+      responses:
+        200:
+          description: "Deleted"
+        404:
+          description: "Not found"
+      security:
+        - api_key: [ ]
+
+  /api/v1/parts_purchase_logs:
+    get:
+      tags:
+        - "Parts Purchase Logs"
+      summary: "Returns all parts purchase logs accessible to the employee"
+      description: "Returns all parts purchase logs for office tasks that the employee has access to (through direct assignment or as estimator/technician on related project task)."
+      produces:
+        - "application/json"
+      responses:
+        200:
+          description: "Successful operation"
+          schema:
+            type: object
+            properties:
+              data:
+                type: array
+                items:
+                  $ref: "#/definitions/PartsPurchaseLog"
+        401:
+          description: "Unauthorized. Token is invalid or expired."
+      security:
+        - api_key: [ ]
+    post:
+      tags:
+        - "Parts Purchase Logs"
+      summary: "Create a new parts purchase log"
+      description: "Creates a new parts purchase log for an office task. Employee must have access to the office task. Supports optional attachments in payload."
+      consumes:
+        - "application/json"
+      produces:
+        - "application/json"
+      parameters:
+        - in: body
+          name: body
+          description: "Parts purchase log object to create"
+          required: true
+          schema:
+            type: object
+            required:
+              - office_task_id
+              - cost
+            properties:
+              office_task_id:
+                type: integer
+                example: 123
+                description: "ID of the office task"
+              cost:
+                type: number
+                format: float
+                example: 150.50
+                description: "Cost of the purchase"
+              product_ids:
+                type: array
+                items:
+                  type: integer
+                example: [1, 2, 3]
+                description: "List of product IDs"
+              product_names:
+                type: string
+                example: "Glass Panel, Sealant, Hardware"
+                description: "Names of products purchased"
+              notes:
+                type: string
+                example: "Purchased from Home Depot"
+              purchase_date:
+                type: string
+                format: date
+                example: "2025-04-15"
+              attachments:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    name:
+                      type: string
+                    content:
+                      type: string
+                      description: "Base64 encoded file content"
+                    mimetype:
+                      type: string
+      responses:
+        201:
+          description: "Successfully created"
+          schema:
+            type: object
+            properties:
+              data:
+                $ref: "#/definitions/PartsPurchaseLog"
+        400:
+          description: "Bad request. Invalid input or missing required fields."
+        401:
+          description: "Unauthorized. Token is invalid or expired."
+        403:
+          description: "Forbidden. No access to the office task."
+        404:
+          description: "Office task not found."
+      security:
+        - api_key: [ ]
+
+  /api/v1/parts_purchase_logs/product_names:
+    get:
+      tags:
+        - "Parts Purchase Logs"
+      summary: "Returns distinct product names for autocomplete"
+      description: "Returns a sorted list of product names combined from parts purchase logs and product templates. Optional query parameter `q` filters names containing the substring (case-insensitive)."
+      produces:
+        - "application/json"
+      parameters:
+        - name: q
+          in: query
+          type: string
+          description: "Optional substring to filter names"
+      responses:
+        200:
+          description: "Successful operation"
+          schema:
+            type: object
+            properties:
+              data:
+                type: array
+                items:
+                  type: string
+        401:
+          description: "Unauthorized. Token is invalid or expired."
+      security:
+        - api_key: [ ]
+
+  /api/v1/parts_purchase_logs/<int:log_id>:
+    get:
+      tags:
+        - "Parts Purchase Logs"
+      summary: "Returns a single parts purchase log by ID"
+      description: "Returns detailed information about a specific parts purchase log including attachments. Employee must have access to the related office task."
+      produces:
+        - "application/json"
+      parameters:
+        - name: log_id
+          in: path
+          required: true
+          type: integer
+          description: "ID of the parts purchase log"
+      responses:
+        200:
+          description: "Successful operation"
+          schema:
+            type: object
+            properties:
+              data:
+                $ref: "#/definitions/PartsPurchaseLog"
+        401:
+          description: "Unauthorized. Token is invalid or expired."
+        404:
+          description: "Parts purchase log not found or access denied"
+      security:
+        - api_key: [ ]
+    put:
+      tags:
+        - "Parts Purchase Logs"
+      summary: "Update an existing parts purchase log"
+      description: "Updates fields on a parts purchase log. Employee must have access to the related office task."
+      consumes:
+        - "application/json"
+      produces:
+        - "application/json"
+      parameters:
+        - name: log_id
+          in: path
+          required: true
+          type: integer
+          description: "ID of the parts purchase log to update"
+        - in: body
+          name: body
+          description: "Fields to update"
+          schema:
+            type: object
+            properties:
+              cost:
+                type: number
+                format: float
+              product_ids:
+                type: array
+                items:
+                  type: integer
+              product_names:
+                type: string
+              notes:
+                type: string
+              purchase_date:
+                type: string
+                format: date
+              attachments:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    name:
+                      type: string
+                    content:
+                      type: string
+                    mimetype:
+                      type: string
+      responses:
+        200:
+          description: "Successful operation"
+          schema:
+            type: object
+            properties:
+              data:
+                $ref: "#/definitions/PartsPurchaseLog"
+        400:
+          description: "Bad request. Invalid input."
+        401:
+          description: "Unauthorized. Token is invalid or expired."
+        404:
+          description: "Parts purchase log not found or access denied"
+      security:
+        - api_key: [ ]
+    delete:
+      tags:
+        - "Parts Purchase Logs"
+      summary: "Delete a parts purchase log"
+      description: "Deletes a parts purchase log. Employee must have access to the related office task."
+      produces:
+        - "application/json"
+      parameters:
+        - name: log_id
+          in: path
+          required: true
+          type: integer
+          description: "ID of the parts purchase log to delete"
+      responses:
+        200:
+          description: "Successfully deleted"
+          schema:
+            type: object
+            properties:
+              message:
+                type: string
+                example: "Deleted successfully"
+        400:
+          description: "Bad request. Error deleting log."
+        401:
+          description: "Unauthorized. Token is invalid or expired."
+        404:
+          description: "Parts purchase log not found or access denied"
+      security:
+        - api_key: [ ]
+
+  /api/v1/task/<int:task_id>/planned_dates/:
+    get:
+      tags:
+        - "Tasks"
+      summary: "Returns all planned dates for the task"
+      description: ""
+      consumes:
+        - "application/json"
+      produces:
+        - "application/json"
+      parameters:
+        - name: task_id
+          in: path
+          required: true
+          type: integer
+          description: "ID of the task for which to return planned dates"
+      responses:
+        200:
+          description: "Successful operation"
+          schema:
+            type: object
+            properties:
+              data:
+                type: array
+                items:
+                  $ref: "#/definitions/PlannedDate"
+        401:
+          description: "Unauthorized. Token is invalid or expired."
+        403:
+          description: "Forbidden. User is not assigned to this task."
+        404:
+          description: "Task not found"
+      security:
+        - api_key: [ ]
+
+  /api/v1/sale_order/<int:sale_order_id>/email_template/:
+    post:
+      tags:
+        - "Emails"
+        - "Sale Orders"
+      summary: "Create and returns email template object for the sale order by ID."
+      description: "Returns email template object for the sale order by ID. To send the email use /api/v1/mail_compose/<int:mail_compose_id>/send/"
+      consumes:
+        - "application/json"
+      produces:
+        - "application/json"
+      parameters:
+        - name: sale_order_id
+          in: path
+          required: true
+          type: integer
+          description: "ID of the sale order to return email template for"
+      responses:
+        200:
+          description: "Successful operation"
+          schema:
+            $ref: "#/definitions/MailCompose"
+        401:
+          description: "Unauthorized. Token is invalid or expired."
+        403:
+          description: "Forbidden. User is not assigned to this sale order."
+        404:
+          description: "Sale order not found"
+
+  /api/v1/mail_compose/<int:mail_compose_id>/send/:
+    post:
+      tags:
+        - "Emails"
+      summary: "Send email using the email template by ID."
+      description: "Send email using the email template by ID. You can change default subject, body and email_from fields."
+      consumes:
+        - "application/json"
+      produces:
+        - "application/json"
+      parameters:
+        - name: mail_compose_id
+          in: path
+          required: true
+          type: integer
+          description: "ID of the email template to send"
+        - in: body
+          name: body
+          description: "Privide email_from, subject and body fields to change default values."
+          required: true
+          schema:
+            type: object
+            properties:
+              subject:
+                type: string
+                example: "My Company (San Francisco) Order (Ref S00051)"
+              body:
+                type: string
+                example: "<div>...</div>"
+              email_from:
+                type: string
+                example: "Abigail Peterson <abigail.peterson39@example.com>"
+      responses:
+        200:
+          description: "Successful operation"
+          schema:
+            $ref: "#/definitions/MailCompose"
+        401:
+          description: "Unauthorized. Token is invalid or expired."
+        404:
+          description: "Mail compose not found"
+
+  /api/v1/invoice/<int:invoice_id>/sms_text/:
+    get:
+      tags:
+        - "Invoices"
+        - "SMS"
+      summary: "Returns SMS text with portal URL for the invoice by ID."
+      description: "Returns SMS text with portal URL for the invoice that can be sent using existing SMS endpoints. The text includes customer name, invoice number, company name and portal link."
+      consumes:
+        - "application/json"
+      produces:
+        - "application/json"
+      parameters:
+        - name: invoice_id
+          in: path
+          required: true
+          type: integer
+          description: "ID of the invoice to return SMS text for"
+      responses:
+        200:
+          description: "Successful operation"
+          schema:
+            type: object
+            properties:
+              data:
+                type: object
+                properties:
+                  sms_text:
+                    type: string
+                    example: "Hi John Doe, your invoice INV/2025/00001 from ARGO Company is ready. View and download it here: https://example.com/my/invoices/42?access_token=abc123"
+                    description: "Complete SMS text ready to be sent"
+                  portal_url:
+                    type: string
+                    example: "https://example.com/my/invoices/42?access_token=abc123"
+                    description: "Direct portal URL for the invoice"
+                  customer_name:
+                    type: string
+                    example: "John Doe"
+                    description: "Customer name extracted from invoice"
+                  invoice_number:
+                    type: string
+                    example: "INV/2025/00001"
+                    description: "Invoice number"
+                  company_name:
+                    type: string
+                    example: "ARGO Company"
+                    description: "Company name from invoice"
+        400:
+          description: "Bad request. Document is not an invoice."
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+                example: "Document is not an invoice."
+        401:
+          description: "Unauthorized. Token is invalid or expired."
+        403:
+          description: "Forbidden. You are not assigned to this task."
+        404:
+          description: "Invoice not found or related sale order not found."
+      security:
+        - api_key: [ ]
+
+  /api/v1/sale_order/<int:sale_order_id>/sms_text/:
+    get:
+      tags:
+        - "Sale Orders"
+        - "SMS"
+      summary: "Returns SMS text with portal URL for the sale order by ID."
+      description: "Returns SMS text with portal URL for the sale order that can be sent using existing SMS endpoints. The text includes customer name, order number, company name and portal link."
+      consumes:
+        - "application/json"
+      produces:
+        - "application/json"
+      parameters:
+        - name: sale_order_id
+          in: path
+          required: true
+          type: integer
+          description: "ID of the sale order to return SMS text for"
+      responses:
+        200:
+          description: "Successful operation"
+          schema:
+            type: object
+            properties:
+              data:
+                type: object
+                properties:
+                  sms_text:
+                    type: string
+                    example: "Hi John Doe, your quote S00051 from ARGO Company is ready for review. View, sign and pay here: https://example.com/my/orders/38?access_token=abc123"
+                    description: "Complete SMS text ready to be sent"
+                  portal_url:
+                    type: string
+                    example: "https://example.com/my/orders/38?access_token=abc123"
+                    description: "Direct portal URL for the sale order"
+                  customer_name:
+                    type: string
+                    example: "John Doe"
+                    description: "Customer name extracted from sale order"
+                  order_number:
+                    type: string
+                    example: "S00051"
+                    description: "Sale order number"
+                  company_name:
+                    type: string
+                    example: "ARGO Company"
+                    description: "Company name from sale order"
+        401:
+          description: "Unauthorized. Token is invalid or expired."
+        403:
+          description: "Forbidden. You are not assigned to this task."
+        404:
+          description: "Sale order not found."
+      security:
+        - api_key: [ ]
+
+  /api/gantt/employees:
+    get:
+      tags:
+        - "Gantt"
+      summary: "Get employees list for Gantt chart"
+      description: "Returns all employees from user companies with their basic information and display settings for Gantt chart"
+      produces:
+        - "application/json"
+      responses:
+        200:
+          description: "Successful operation"
+          schema:
+            type: object
+            properties:
+              status:
+                type: string
+                example: "success"
+              data:
+                type: array
+                items:
+                  $ref: "#/definitions/GanttEmployee"
+        401:
+          description: "Unauthorized. Invalid or missing access token."
+          schema:
+            $ref: "#/definitions/GanttError"
+        403:
+          description: "Forbidden. User does not have FSM access."
+          schema:
+            $ref: "#/definitions/GanttError"
+        500:
+          description: "Internal server error"
+          schema:
+            $ref: "#/definitions/GanttError"
+      security:
+        - gantt_token: []
+
+  /api/gantt/tasks:
+    get:
+      tags:
+        - "Gantt"
+      summary: "Get tasks for Gantt chart"
+      description: "Returns project tasks and secondary tasks for specified date range and employees. Supports filtering by employee, partner, and including archived tasks."
+      produces:
+        - "application/json"
+      parameters:
+        - name: date_from
+          in: query
+          required: true
+          type: string
+          format: date-time
+          description: "Start date for task filtering (ISO format)"
+          example: "2025-01-20T00:00:00"
+        - name: date_to
+          in: query
+          required: true
+          type: string
+          format: date-time
+          description: "End date for task filtering (ISO format)"
+          example: "2025-01-27T23:59:59"
+        - name: employee_ids
+          in: query
+          required: false
+          type: array
+          items:
+            type: integer
+          description: "Array of employee IDs to filter tasks"
+          example: [1, 2, 3]
+        - name: partner_id
+          in: query
+          required: false
+          type: integer
+          description: "Partner ID to filter tasks by customer"
+          example: 123
+        - name: include_archived
+          in: query
+          required: false
+          type: boolean
+          description: "Include archived tasks in results"
+          example: false
+      responses:
+        200:
+          description: "Successful operation"
+          schema:
+            type: object
+            properties:
+              status:
+                type: string
+                example: "success"
+              data:
+                type: object
+                properties:
+                  project_tasks:
+                    type: array
+                    items:
+                      $ref: "#/definitions/GanttProjectTask"
+                  secondary_tasks:
+                    type: array
+                    items:
+                      $ref: "#/definitions/GanttSecondaryTask"
+        400:
+          description: "Bad request. Missing required date parameters."
+          schema:
+            $ref: "#/definitions/GanttError"
+        401:
+          description: "Unauthorized. Invalid or missing access token."
+          schema:
+            $ref: "#/definitions/GanttError"
+        403:
+          description: "Forbidden. User does not have FSM access."
+          schema:
+            $ref: "#/definitions/GanttError"
+        500:
+          description: "Internal server error"
+          schema:
+            $ref: "#/definitions/GanttError"
+      security:
+        - gantt_token: []
+    post:
+      tags:
+        - "Gantt"
+      summary: "Create new project task"
+      description: "Creates a new project task and assigns employee as estimator or technician based on task type. Checks for time overlaps."
+      consumes:
+        - "application/json"
+      produces:
+        - "application/json"
+      parameters:
+        - in: body
+          name: body
+          description: "Task creation data"
+          required: true
+          schema:
+            $ref: "#/definitions/GanttTaskCreate"
+      responses:
+        200:
+          description: "Task created successfully"
+          schema:
+            type: object
+            properties:
+              status:
+                type: string
+                example: "success"
+              data:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                    example: 123
+                  warnings:
+                    type: array
+                    items:
+                      type: string
+                    example: ["Time overlap detected with task #456"]
+                  overlap_details:
+                    $ref: "#/definitions/GanttOverlapDetails"
+        400:
+          description: "Bad request. Missing required fields or invalid data."
+          schema:
+            $ref: "#/definitions/GanttError"
+        401:
+          description: "Unauthorized. Invalid or missing access token."
+          schema:
+            $ref: "#/definitions/GanttError"
+        403:
+          description: "Forbidden. User does not have FSM access."
+          schema:
+            $ref: "#/definitions/GanttError"
+        500:
+          description: "Internal server error"
+          schema:
+            $ref: "#/definitions/GanttError"
+      security:
+        - gantt_token: []
+
+  /api/gantt/tasks/{task_id}:
+    put:
+      tags:
+        - "Gantt"
+      summary: "Update project task"
+      description: "Updates project task (drag & drop functionality). Updates employee assignment and datetime based on task stage (estimate or tech schedule)."
+      consumes:
+        - "application/json"
+      produces:
+        - "application/json"
+      parameters:
+        - name: task_id
+          in: path
+          required: true
+          type: integer
+          description: "ID of the task to update"
+        - in: body
+          name: body
+          description: "Task update data"
+          required: true
+          schema:
+            $ref: "#/definitions/GanttTaskUpdate"
+      responses:
+        200:
+          description: "Task updated successfully"
+          schema:
+            type: object
+            properties:
+              status:
+                type: string
+                example: "success"
+              data:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                    example: 123
+                  warnings:
+                    type: array
+                    items:
+                      type: string
+                    example: []
+                  overlap_details:
+                    $ref: "#/definitions/GanttOverlapDetails"
+        400:
+          description: "Bad request. Invalid dates or data."
+          schema:
+            $ref: "#/definitions/GanttError"
+        401:
+          description: "Unauthorized. Invalid or missing access token."
+          schema:
+            $ref: "#/definitions/GanttError"
+        403:
+          description: "Forbidden. User does not have FSM access."
+          schema:
+            $ref: "#/definitions/GanttError"
+        404:
+          description: "Task not found"
+          schema:
+            $ref: "#/definitions/GanttError"
+        500:
+          description: "Internal server error"
+          schema:
+            $ref: "#/definitions/GanttError"
+      security:
+        - gantt_token: []
+    delete:
+      tags:
+        - "Gantt"
+      summary: "Delete project task"
+      description: "Deletes a project task. Task must be archived first before deletion."
+      produces:
+        - "application/json"
+      parameters:
+        - name: task_id
+          in: path
+          required: true
+          type: integer
+          description: "ID of the task to delete"
+      responses:
+        200:
+          description: "Task deleted successfully"
+          schema:
+            type: object
+            properties:
+              status:
+                type: string
+                example: "success"
+              message:
+                type: string
+                example: "Task deleted successfully"
+        401:
+          description: "Unauthorized. Invalid or missing access token."
+          schema:
+            $ref: "#/definitions/GanttError"
+        403:
+          description: "Forbidden. User does not have FSM access."
+          schema:
+            $ref: "#/definitions/GanttError"
+        404:
+          description: "Task not found"
+          schema:
+            $ref: "#/definitions/GanttError"
+        409:
+          description: "Conflict. Task must be archived before deletion."
+          schema:
+            $ref: "#/definitions/GanttError"
+        500:
+          description: "Internal server error"
+          schema:
+            $ref: "#/definitions/GanttError"
+      security:
+        - gantt_token: []
+
+  /api/gantt/customers:
+    get:
+      tags:
+        - "Gantt"
+      summary: "Search customers"
+      description: "Search for customers by name, address, city, or phone. Returns up to 20 results. Can also return a suggested customer."
+      produces:
+        - "application/json"
+      parameters:
+        - name: search
+          in: query
+          required: false
+          type: string
+          description: "Search query (minimum 2 characters if no suggested_customer_id)"
+          example: "John"
+        - name: suggested_customer_id
+          in: query
+          required: false
+          type: integer
+          description: "ID of suggested customer to include in results"
+          example: 123
+      responses:
+        200:
+          description: "Successful operation"
+          schema:
+            type: object
+            properties:
+              status:
+                type: string
+                example: "success"
+              data:
+                type: object
+                properties:
+                  customers:
+                    type: array
+                    items:
+                      $ref: "#/definitions/GanttCustomer"
+        400:
+          description: "Bad request. Search query too short."
+          schema:
+            $ref: "#/definitions/GanttError"
+        401:
+          description: "Unauthorized. Invalid or missing access token."
+          schema:
+            $ref: "#/definitions/GanttError"
+        403:
+          description: "Forbidden. User does not have FSM access."
+          schema:
+            $ref: "#/definitions/GanttError"
+        500:
+          description: "Internal server error"
+          schema:
+            $ref: "#/definitions/GanttError"
+      security:
+        - gantt_token: []
+
+  /api/gantt/secondary-tasks:
+    post:
+      tags:
+        - "Gantt"
+      summary: "Create secondary task"
+      description: "Creates a new secondary task for an employee. Checks for time overlaps with existing tasks."
+      consumes:
+        - "application/json"
+      produces:
+        - "application/json"
+      parameters:
+        - in: body
+          name: body
+          description: "Secondary task creation data"
+          required: true
+          schema:
+            $ref: "#/definitions/GanttSecondaryTaskCreate"
+      responses:
+        200:
+          description: "Secondary task created successfully"
+          schema:
+            type: object
+            properties:
+              status:
+                type: string
+                example: "success"
+              data:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                    example: 456
+                  warnings:
+                    type: array
+                    items:
+                      type: string
+                    example: []
+                  overlap_details:
+                    $ref: "#/definitions/GanttOverlapDetails"
+        400:
+          description: "Bad request. Missing required fields or invalid data."
+          schema:
+            $ref: "#/definitions/GanttError"
+        401:
+          description: "Unauthorized. Invalid or missing access token."
+          schema:
+            $ref: "#/definitions/GanttError"
+        403:
+          description: "Forbidden. User does not have FSM access."
+          schema:
+            $ref: "#/definitions/GanttError"
+        500:
+          description: "Internal server error"
+          schema:
+            $ref: "#/definitions/GanttError"
+      security:
+        - gantt_token: []
+
+  /api/gantt/secondary-tasks/{task_id}:
+    put:
+      tags:
+        - "Gantt"
+      summary: "Update secondary task"
+      description: "Updates an existing secondary task. Checks for time overlaps with other tasks."
+      consumes:
+        - "application/json"
+      produces:
+        - "application/json"
+      parameters:
+        - name: task_id
+          in: path
+          required: true
+          type: integer
+          description: "ID of the secondary task to update"
+        - in: body
+          name: body
+          description: "Secondary task update data"
+          required: true
+          schema:
+            $ref: "#/definitions/GanttSecondaryTaskUpdate"
+      responses:
+        200:
+          description: "Secondary task updated successfully"
+          schema:
+            type: object
+            properties:
+              status:
+                type: string
+                example: "success"
+              data:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                    example: 456
+                  warnings:
+                    type: array
+                    items:
+                      type: string
+                    example: []
+                  overlap_details:
+                    $ref: "#/definitions/GanttOverlapDetails"
+        400:
+          description: "Bad request. Invalid dates or data."
+          schema:
+            $ref: "#/definitions/GanttError"
+        401:
+          description: "Unauthorized. Invalid or missing access token."
+          schema:
+            $ref: "#/definitions/GanttError"
+        403:
+          description: "Forbidden. User does not have FSM access."
+          schema:
+            $ref: "#/definitions/GanttError"
+        404:
+          description: "Secondary task not found"
+          schema:
+            $ref: "#/definitions/GanttError"
+        500:
+          description: "Internal server error"
+          schema:
+            $ref: "#/definitions/GanttError"
+      security:
+        - gantt_token: []
+    delete:
+      tags:
+        - "Gantt"
+      summary: "Delete secondary task"
+      description: "Deletes a secondary task. Task must be archived first before deletion."
+      produces:
+        - "application/json"
+      parameters:
+        - name: task_id
+          in: path
+          required: true
+          type: integer
+          description: "ID of the secondary task to delete"
+      responses:
+        200:
+          description: "Secondary task deleted successfully"
+          schema:
+            type: object
+            properties:
+              status:
+                type: string
+                example: "success"
+              message:
+                type: string
+                example: "Secondary task deleted successfully"
+        401:
+          description: "Unauthorized. Invalid or missing access token."
+          schema:
+            $ref: "#/definitions/GanttError"
+        403:
+          description: "Forbidden. User does not have FSM access."
+          schema:
+            $ref: "#/definitions/GanttError"
+        404:
+          description: "Secondary task not found"
+          schema:
+            $ref: "#/definitions/GanttError"
+        409:
+          description: "Conflict. Secondary task must be archived before deletion."
+          schema:
+            $ref: "#/definitions/GanttError"
+        500:
+          description: "Internal server error"
+          schema:
+            $ref: "#/definitions/GanttError"
+      security:
+        - gantt_token: []
+
+  /api/gantt/check-overlap:
+    post:
+      tags:
+        - "Gantt"
+      summary: "Check time overlap"
+      description: "Checks for time overlaps between tasks for a specific employee and time range. Used for validation before creating or updating tasks."
+      consumes:
+        - "application/json"
+      produces:
+        - "application/json"
+      parameters:
+        - in: body
+          name: body
+          description: "Overlap check data"
+          required: true
+          schema:
+            $ref: "#/definitions/GanttOverlapCheck"
+      responses:
+        200:
+          description: "Overlap check completed"
+          schema:
+            type: object
+            properties:
+              status:
+                type: string
+                example: "success"
+              data:
+                $ref: "#/definitions/GanttOverlapDetails"
+        400:
+          description: "Bad request. Missing required fields or invalid data."
+          schema:
+            $ref: "#/definitions/GanttError"
+        401:
+          description: "Unauthorized. Invalid or missing access token."
+          schema:
+            $ref: "#/definitions/GanttError"
+        403:
+          description: "Forbidden. User does not have FSM access."
+          schema:
+            $ref: "#/definitions/GanttError"
+        500:
+          description: "Internal server error"
+          schema:
+            $ref: "#/definitions/GanttError"
+      security:
+        - gantt_token: []
+
+  /api/gantt/tasks/{task_id}/archive:
+    post:
+      tags:
+        - "Gantt"
+      summary: "Archive project task"
+      description: "Archives a project task by setting active=False. Archived tasks can be restored later."
+      produces:
+        - "application/json"
+      parameters:
+        - name: task_id
+          in: path
+          required: true
+          type: integer
+          description: "ID of the task to archive"
+      responses:
+        200:
+          description: "Task archived successfully"
+          schema:
+            type: object
+            properties:
+              status:
+                type: string
+                example: "success"
+              data:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                    example: 123
+                  active:
+                    type: boolean
+                    example: false
+                  message:
+                    type: string
+                    example: "Task archived successfully"
+        401:
+          description: "Unauthorized. Invalid or missing access token."
+          schema:
+            $ref: "#/definitions/GanttError"
+        403:
+          description: "Forbidden. User does not have FSM access."
+          schema:
+            $ref: "#/definitions/GanttError"
+        404:
+          description: "Task not found"
+          schema:
+            $ref: "#/definitions/GanttError"
+        500:
+          description: "Internal server error"
+          schema:
+            $ref: "#/definitions/GanttError"
+      security:
+        - gantt_token: []
+
+  /api/gantt/secondary-tasks/{task_id}/archive:
+    post:
+      tags:
+        - "Gantt"
+      summary: "Archive secondary task"
+      description: "Archives a secondary task by setting active=False. Archived tasks can be restored later."
+      produces:
+        - "application/json"
+      parameters:
+        - name: task_id
+          in: path
+          required: true
+          type: integer
+          description: "ID of the secondary task to archive"
+      responses:
+        200:
+          description: "Secondary task archived successfully"
+          schema:
+            type: object
+            properties:
+              status:
+                type: string
+                example: "success"
+              data:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                    example: 456
+                  active:
+                    type: boolean
+                    example: false
+                  message:
+                    type: string
+                    example: "Secondary task archived successfully"
+        401:
+          description: "Unauthorized. Invalid or missing access token."
+          schema:
+            $ref: "#/definitions/GanttError"
+        403:
+          description: "Forbidden. User does not have FSM access."
+          schema:
+            $ref: "#/definitions/GanttError"
+        404:
+          description: "Secondary task not found"
+          schema:
+            $ref: "#/definitions/GanttError"
+        500:
+          description: "Internal server error"
+          schema:
+            $ref: "#/definitions/GanttError"
+      security:
+        - gantt_token: []
+
+  /api/gantt/tasks/{task_id}/unarchive:
+    post:
+      tags:
+        - "Gantt"
+      summary: "Restore project task"
+      description: "Restores (unarchives) a project task by setting active=True."
+      produces:
+        - "application/json"
+      parameters:
+        - name: task_id
+          in: path
+          required: true
+          type: integer
+          description: "ID of the task to restore"
+      responses:
+        200:
+          description: "Task restored successfully"
+          schema:
+            type: object
+            properties:
+              status:
+                type: string
+                example: "success"
+              data:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                    example: 123
+                  active:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "Task restored successfully"
+        401:
+          description: "Unauthorized. Invalid or missing access token."
+          schema:
+            $ref: "#/definitions/GanttError"
+        403:
+          description: "Forbidden. User does not have FSM access."
+          schema:
+            $ref: "#/definitions/GanttError"
+        404:
+          description: "Task not found"
+          schema:
+            $ref: "#/definitions/GanttError"
+        500:
+          description: "Internal server error"
+          schema:
+            $ref: "#/definitions/GanttError"
+      security:
+        - gantt_token: []
+
+  /api/gantt/secondary-tasks/{task_id}/unarchive:
+    post:
+      tags:
+        - "Gantt"
+      summary: "Restore secondary task"
+      description: "Restores (unarchives) a secondary task by setting active=True."
+      produces:
+        - "application/json"
+      parameters:
+        - name: task_id
+          in: path
+          required: true
+          type: integer
+          description: "ID of the secondary task to restore"
+      responses:
+        200:
+          description: "Secondary task restored successfully"
+          schema:
+            type: object
+            properties:
+              status:
+                type: string
+                example: "success"
+              data:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                    example: 456
+                  active:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "Secondary task restored successfully"
+        401:
+          description: "Unauthorized. Invalid or missing access token."
+          schema:
+            $ref: "#/definitions/GanttError"
+        403:
+          description: "Forbidden. User does not have FSM access."
+          schema:
+            $ref: "#/definitions/GanttError"
+        404:
+          description: "Secondary task not found"
+          schema:
+            $ref: "#/definitions/GanttError"
+        500:
+          description: "Internal server error"
+          schema:
+            $ref: "#/definitions/GanttError"
+      security:
+        - gantt_token: []
+
+securityDefinitions:
+  api_key:
+    type: "apiKey"
+    name: "api_key"
+    in: "header"
+  gantt_token:
+    type: "apiKey"
+    name: "Authorization"
+    in: "header"
+    description: "Bearer token for Gantt API authentication. Format: 'Bearer <token>'"
+
+definitions:
+  TaskSummary:
+    type: object
+    properties:
+      id:
+        type: integer
+        example: 123
+      reference_number:
+        type: string
+        example: "FSM-001"
+      name:
+        type: string
+        example: "John Doe, New York"
+      customer:
+        type: object
+        properties:
+          id:
+            type: integer
+            example: 456
+          name:
+            type: string
+            example: "John Doe"
+          address:
+            type: string
+            example: "123 Main St, New York, NY 10001"
+      planned_date_begin:
+        type: string
+        format: date-time
+        example: "2025-01-20 09:00:00"
+        description: "Start date and time for estimate work. Can be null if not scheduled."
+      date_deadline:
+        type: string
+        format: date-time
+        example: "2025-01-20 11:00:00"
+        description: "End date and time for estimate work. Can be null if not scheduled."
+      duration_hours:
+        type: number
+        format: float
+        example: 2.0
+        description: "Duration of the estimate work in hours. Calculated from planned_date_begin and date_deadline."
+      tech_date_begin:
+        type: string
+        format: date-time
+        example: "2025-01-20 13:00:00"
+        description: "Start date and time for tech job work. Can be null if not scheduled."
+      tech_date_deadline:
+        type: string
+        format: date-time
+        example: "2025-01-20 15:00:00"
+        description: "End date and time for tech job work. Can be null if not scheduled."
+      tech_duration_hours:
+        type: number
+        format: float
+        example: 2.0
+        description: "Duration of the tech job work in hours. Calculated from tech_date_begin and tech_date_deadline."
+      status:
+        type: string
+        example: "In Progress"
+        description: "Current status/stage of the task"
+      create_date:
+        type: string
+        format: date-time
+        example: "2025-01-19 15:30:00"
+      write_date:
+        type: string
+        format: date-time
+        example: "2025-01-20 08:45:00"
+      estimators:
+        type: array
+        description: "List of estimators assigned to the task"
+        items:
+          type: object
+          properties:
+            id:
+              type: integer
+              example: 123
+              description: "Employee ID"
+            name:
+              type: string
+              example: "John Smith"
+              description: "Employee name"
+            mobile_phone:
+              type: string
+              example: "+1234567890"
+              description: "Employee mobile phone number"
+            color:
+              type: string
+              example: "#ff5733"
+              description: "Employee color code for visual identification"
+      technicians:
+        type: array
+        description: "List of technicians assigned to the task"
+        items:
+          type: object
+          properties:
+            id:
+              type: integer
+              example: 456
+              description: "Employee ID"
+            name:
+              type: string
+              example: "Jane Doe"
+              description: "Employee name"
+            mobile_phone:
+              type: string
+              example: "+0987654321"
+              description: "Employee mobile phone number"
+            color:
+              type: string
+              example: "#33ff57"
+              description: "Employee color code for visual identification"
+
+  TaskShort:
+    type: object
+    properties:
+      id:
+        type: integer
+        example: 62
+      name:
+        type: string
+        example: "Boiler maintenance"
+      reference_number:
+        type: string
+        example: 'T-1'
+      client:
+        type: string
+        example: "Colleen Diaz"
+      status:
+        type: string
+        example: "01_in_progress"
+      estimator:
+        type: string
+        example: "Amy Watson"
+      technician:
+        type: string
+        example: "Amy Watson"
+
+  TaskDetails:
+    type: object
+    properties:
+      id:
+        type: integer
+        example: 121
+      name:
+        type: string
+        example: "Azure Interior, Brandon Freeman task"
+      reference_number:
+        type: string
+        example: "T-4"
+      customer:
+        type: object
+        properties:
+          id:
+            type: integer
+            example: 27
+          name:
+            type: string
+            example: "Brandon Freeman"
+          address:
+            type: string
+            example: "4557 De Silva St, 94538 Fremont, California, United States"
+          phone:
+            type: string
+            example: "N/A"
+          mobile:
+            type: string
+            example: "+1-202-555-0173"
+      status:
+        type: string
+        example: "New"
+      lead_source:
+        type: string
+        example: "Website"
+      assignees:
+        type: array
+        items:
+          type: object
+          properties:
+            id:
+              type: integer
+              example: 2
+            name:
+              type: string
+              example: "Mitchell Admin"
+      estimators:
+        type: array
+        items:
+          type: object
+          properties:
+            id:
+              type: integer
+              example: 6
+            name:
+              type: string
+              example: "Abigail Peterson"
+      technicians:
+        type: array
+        items:
+          type: object
+          properties:
+            id:
+              type: integer
+              example: 14
+            name:
+              type: string
+              example: "Anita Oliver"
+      description:
+        type: string
+        example: "<p data-oe-version=\"1.0\" data-last-history-steps=\"2960336533123470\">asdasdasd</p>"
+      tags:
+        type: array
+        items:
+          type: object
+          properties:
+            id:
+              type: integer
+              example: 3
+            name:
+              type: string
+              example: "Experiment"
+      attachments:
+        type: array
+        items:
+          $ref: "#/definitions/Attachment"
+      parts_statuses:
+        type: object
+        properties:
+          glass:
+            type: string
+            example: "n/a"
+          mechanism:
+            type: string
+            example: "delivered_to_destination_warehouse"
+          fwr:
+            type: string
+            example: "ordered"
+          storm:
+            type: string
+            example: "ready_to_pick_up_from_manufacturer"
+          woodwork:
+            type: string
+            example: "picked_up_from_manufacturer"
+          screen:
+            type: string
+            example: "n/a"
+          sash:
+            type: string
+            example: "n/a"
+      quotation_status:
+        type: string
+        example: "pending"
+      estimator_date_begin:
+        type: string
+        format: date-time
+        example: "2024-07-15 09:00:00"
+        description: "Planned start date and time for the estimator work. Can be null if not scheduled."
+      estimator_date_deadline:
+        type: string
+        format: date-time
+        example: "2024-07-15 17:00:00"
+        description: "Planned deadline date and time for the estimator work. Can be null if not set."
+      tech_date_begin:
+        type: string
+        format: date-time
+        example: "2024-07-15 13:00:00"
+        description: "Start date and time for tech job work. Can be null if not scheduled."
+      tech_date_deadline:
+        type: string
+        format: date-time
+        example: "2024-07-15 15:00:00"
+        description: "End date and time for tech job work. Can be null if not scheduled."
+      create_date:
+        type: string
+        format: date-time
+        example: "2024-07-15 10:00:00"
+      write_date:
+        type: string
+        format: date-time
+        example: "2024-07-15 10:00:00"
+
+  CustomerDetails:
+    type: object
+    properties:
+      id:
+        type: integer
+        example: 27
+      name:
+        type: string
+        example: "Brandon Freeman"
+      title:
+        type: string
+        example: "Mister"
+      address:
+        type: object
+        description: "Customer address information with both complete formatted address and individual components"
+        properties:
+          complete:
+            type: string
+            description: "Complete formatted address string"
+            example: "4557 De Silva St, 94538 Fremont, California, United States"
+          street:
+            type: string
+            description: "Primary street address"
+            example: "4557 De Silva St"
+          street2:
+            type: string
+            description: "Secondary street address (apartment, suite, etc.)"
+            example: "Apt 123"
+          city:
+            type: string
+            description: "City name"
+            example: "Fremont"
+          zip:
+            type: string
+            description: "Postal/ZIP code"
+            example: "94538"
+          state:
+            type: object
+            description: "State/province information"
+            properties:
+              id:
+                type: integer
+                description: "State ID"
+                example: 5
+              name:
+                type: string
+                description: "State name"
+                example: "California"
+          country:
+            type: object
+            description: "Country information"
+            properties:
+              id:
+                type: integer
+                description: "Country ID"
+                example: 233
+              name:
+                type: string
+                description: "Country name"
+                example: "United States"
+      phone:
+        type: string
+        example: null
+      mobile:
+        type: string
+        example: null
+      email:
+        type: string
+        example: "brandon.freeman55@example.com"
+      tags:
+        type: array
+        items:
+          type: object
+          properties:
+            id:
+              type: integer
+              example: 7
+            name:
+              type: string
+              example: "Desk Manufacturers"
+      previous_tasks:
+        type: array
+        items:
+          type: object
+          properties:
+            id:
+              type: integer
+              example: 77
+            name:
+              type: string
+              example: "Find and fix leak"
+            reference_number:
+              type: string
+              example: "T-1"
+            status:
+              type: string
+              example: "01_in_progress"
+            create_date:
+              type: string
+              format: date-time
+              example: "2025-03-07 09:28:22"
+      notes:
+        type: array
+        items:
+          type: object
+          properties:
+            id:
+              type: integer
+              example: 1167
+            message_type:
+              type: string
+              example: "comment"
+            body:
+              type: string
+              example: "<p>123</p>"
+            author_name:
+              type: string
+              example: "Mitchell Admin"
+            create_date:
+              type: string
+              format: date-time
+              example: "2025-03-18 09:36:44"
+            write_date:
+              type: string
+              format: date-time
+              example: "2025-03-18 09:36:44"
+      attachments:
+        type: array
+        items:
+          $ref: "#/definitions/Attachment"
+      create_date:
+        type: string
+        format: date-time
+        example: "2025-03-07 09:20:55"
+      write_date:
+        type: string
+        format: date-time
+        example: "2025-03-18 09:53:09"
+
+  Attachment:
+    type: object
+    properties:
+      id:
+        type: integer
+        example: 1336
+      name:
+        type: string
+        example: "document.pdf"
+      mimetype:
+        type: string
+        example: "application/pdf"
+      size:
+        type: integer
+        example: 116755
+      create_date:
+        type: string
+        format: date-time
+        example: "2025-03-18 09:53:17"
+      write_date:
+        type: string
+        format: date-time
+        example: "2025-03-18 09:53:17"
+
+  AttachmentBase64:
+    type: object
+    properties:
+      id:
+        type: integer
+        example: 1336
+      name:
+        type: string
+        example: "document.pdf"
+      mimetype:
+        type: string
+        example: "application/pdf"
+      size:
+        type: integer
+        example: 116755
+      data_base64:
+        type: string
+        example: "JVBERi0xLjQKJeLjz9MKNCAwIG9iago8PC9UeXBlL1hSZW5kZXIvUGFnZXMvUGFnZVsvNjYv..."
+      create_date:
+        type: string
+        format: date-time
+        example: "2025-03-18 09:53:17"
+      write_date:
+        type: string
+        format: date-time
+        example: "2025-03-18 09:53:17"
+
+  Note:
+    type: object
+    properties:
+      id:
+        type: integer
+        example: 23
+      note:
+        type: string
+        example: "yet meadow concerned quicker procurement indeed tensely gymnast gah"
+      employee:
+        type: string
+        example: "Amy Watson"
+
+      attachment_ids:
+        type: array
+        items:
+          $ref: "#/definitions/Attachment"
+      created_by_app:
+        type: boolean
+        example: true
+      create_date:
+        type: string
+        format: date-time
+        example: "2025-02-10 09:30:26"
+      write_date:
+        type: string
+        format: date-time
+        example: "2025-02-10 09:30:26"
+
+  ServiceDetails:
+    type: object
+    properties:
+      id:
+        type: integer
+        example: 8
+      name:
+        type: string
+        example: "New Task - Glass - S00037"
+      product:
+        $ref: "#/definitions/Product"
+      sale_order:
+        "$ref": "#/definitions/SaleOrder"
+      description:
+        type: string
+        example: "DescriptionDescriptionDescriptionDescription"
+      estimators:
+        type: array
+        items:
+          type: object
+          properties:
+            id:
+              type: integer
+              example: 6
+            name:
+              type: string
+              example: "Abigail Peterson"
+      technicians:
+        type: array
+        items:
+          type: object
+          properties:
+            id:
+              type: integer
+              example: 14
+            name:
+              type: string
+              example: "Anita Oliver"
+      price:
+        type: number
+        example: 0
+      discount_percent:
+        type: number
+        example: 0
+      discount_amount:
+        type: number
+        example: 0
+      discount_amount_actual:
+        type: number
+        example: 0
+      price_with_discount:
+        type: number
+        example: 0
+      wrong_measurements:
+        type: boolean
+        example: false
+      wrong_measurements_note:
+        type: string
+        example: "Note"
+      remeasured:
+        type: boolean
+        example: false
+      service_call:
+        type: boolean
+        example: false
+      service_call_fixed:
+        type: boolean
+        example: false
+      done:
+        type: boolean
+        example: false
+      estimate_job_rooms:
+        type: array
+        items:
+          $ref: "#/definitions/EstimateJobRoom"
+      calculator_type:
+        type: string
+        example: "other"
+      window_type:
+        type: boolean
+        example: false
+      door_type:
+        type: boolean
+        example: false
+      standard_window_dimensions:
+        type: string
+        example: "custom"
+      standard_door_dimensions:
+        type: boolean
+        example: false
+      custom_width:
+        type: number
+        example: 0
+      custom_width_fraction:
+        type: string
+        example: '1-1/2, 1 1/2'
+      custom_height:
+        type: number
+        example: 0
+      custom_height_fraction:
+        type: string
+        example: '1-1/2, 1 1/2'
+      need_to_remeasure:
+        type: boolean
+        example: false
+      door_frame_color:
+        type: string
+        example: 'white_interior_white_exterior'
+      window_frame_color:
+        type: string
+        example: 'almond_interior_almond_exterior_extruded'
+      glass_options:
+        type: string
+        example: "clear"
+      obscure_glass:
+        type: boolean
+        example: false
+      neat:
+        type: boolean
+        example: false
+      triple_pane_glass:
+        type: boolean
+        example: false
+      tempered:
+        type: boolean
+        example: false
+      glass_upcharge:
+        type: boolean
+        example: false
+      grids_type:
+        type: string
+        example: "no_grids"
+      flat_and_contour_grids_color:
+        type: string
+        example: "no_grids_color"
+      upgrade_handle:
+        type: boolean
+        example: false
+      blinds:
+        type: string
+        example: 'no_blinds'
+      reinforced_meeting_rail:
+        type: string
+        example: '5'
+      foam_insulation_frame_sash:
+        type: boolean
+        example: false
+      energy_star:
+        type: boolean
+        example: false
+      escape_window:
+        type: boolean
+        example: false
+      brick_molding:
+        type: boolean
+        example: false
+      window_trims:
+        type: boolean
+        example: false
+      window_trims_price:
+        type: number
+        example: 0
+      window_capping:
+        type: boolean
+        example: false
+      window_capping_price:
+        type: number
+        example: 0
+      other_arch_elements:
+        type: boolean
+        example: false
+      other_arch_elements_price:
+        type: number
+        example: 0
+
+  ServicePost:
+    type: object
+    properties:
+      product_tmp_id:
+        type: integer
+        example: 7
+      sale_order_id:
+        type: integer
+        example: 37
+      description:
+        type: string
+        example: "DescriptionDescriptionDescriptionDescription"
+      role:
+        type: string
+        example: "Either 'technician' or 'estimator'"
+      price:
+        type: number
+        example: 0
+      discount_percent:
+        type: number
+        example: 0
+      discount_amount:
+        type: number
+        example: 0
+      wrong_measurements:
+        type: boolean
+        example: false
+      wrong_measurements_note:
+        type: string
+        example: "Note"
+      remeasured:
+        type: boolean
+        example: false
+      service_call_fixed:
+        type: boolean
+        example: false
+      done:
+        type: boolean
+        example: false
+      estimate_job_room_ids:
+        type: array
+        items:
+          type: integer
+          example: [ 1, 2, 3 ]
+      window_type:
+        type: boolean
+        example: false
+      door_type:
+        type: boolean
+        example: false
+      standard_window_dimensions:
+        type: string
+        example: "custom"
+      standard_door_dimensions:
+        type: boolean
+        example: false
+      custom_width:
+        type: number
+        example: 10
+      custom_width_fraction:
+        type: string
+        example: '1-1/2, 1 1/2'
+      custom_height:
+        type: number
+        example: 10
+      custom_height_fraction:
+        type: string
+        example: '1-1/2, 1 1/2'
+      need_to_remeasure:
+        type: boolean
+        example: false
+      door_frame_color:
+        type: string
+        example: 'white_interior_white_exterior'
+      window_frame_color:
+        type: string
+        example: 'almond_interior_almond_exterior_extruded'
+      glass_options:
+        type: string
+        example: "clear"
+      obscure_glass:
+        type: boolean
+        example: false
+      neat:
+        type: boolean
+        example: false
+      triple_pane_glass:
+        type: boolean
+        example: false
+      tempered:
+        type: boolean
+        example: false
+      glass_upcharge:
+        type: boolean
+        example: false
+      grids_type:
+        type: string
+        example: "no_grids"
+      flat_and_contour_grids_color:
+        type: string
+        example: "no_grids_color"
+      upgrade_handle:
+        type: boolean
+        example: false
+      blinds:
+        type: string
+        example: no_blinds
+      reinforced_meeting_rail:
+        type: string
+        example: '5'
+      foam_insulation_frame_sash:
+        type: boolean
+        example: false
+      energy_star:
+        type: boolean
+        example: false
+      escape_window:
+        type: boolean
+        example: false
+      brick_molding:
+        type: boolean
+        example: false
+      window_trims:
+        type: boolean
+        example: false
+      window_capping:
+        type: boolean
+        example: false
+      other_arch_elements:
+        type: boolean
+        example: false
+      other_arch_elements_price:
+        type: number
+        example: 0
+
+  SaleOrder:
+    type: object
+    properties:
+      id:
+        type: integer
+        example: 37
+      name:
+        type: string
+        example: "S00037"
+      status:
+        type: string
+        example: 'draft'
+      create_date:
+        type: string
+        format: date-time
+        example: "2025-03-07 09:20:55"
+      write_date:
+        type: string
+        format: date-time
+        example: "2025-03-18 09:53:09"
+
+  SaleOrderDetailed:
+    type: object
+    properties:
+      id:
+        type: integer
+        example: 37
+      name:
+        type: string
+        example: "S00037"
+      state:
+        type: string
+        example: "draft"
+        description: "State of the sale order (draft, sent, sale, done, cancel)"
+      partner_id:
+        type: integer
+        example: 123
+      partner_name:
+        type: string
+        example: "John Doe"
+      user_id:
+        type: integer
+        example: 1
+        description: "Salesperson user ID"
+      user_name:
+        type: string
+        example: "Administrator"
+        description: "Salesperson name"
+      team_id:
+        type: integer
+        example: 1
+        description: "Sales team ID"
+      team_name:
+        type: string
+        example: "Sales Team"
+      task_id:
+        type: integer
+        example: 456
+      task_name:
+        type: string
+        example: "Window Installation"
+      project_id:
+        type: integer
+        example: 789
+      project_name:
+        type: string
+        example: "Field Service"
+      origin:
+        type: string
+        example: "Field Service - Window Installation"
+      note:
+        type: string
+        example: "Customer requested expedited delivery"
+      validity_date:
+        type: string
+        format: date
+        example: "2025-02-15"
+        description: "Validity date of the quotation"
+      date_order:
+        type: string
+        format: date-time
+        example: "2025-01-20 10:30:00"
+      amount_untaxed:
+        type: number
+        format: float
+        example: 1000.00
+      amount_tax:
+        type: number
+        format: float
+        example: 100.00
+      amount_total:
+        type: number
+        format: float
+        example: 1100.00
+      currency_id:
+        type: integer
+        example: 1
+      currency_name:
+        type: string
+        example: "USD"
+      invoice_status:
+        type: string
+        example: "to invoice"
+        description: "Invoice status (no, to invoice, invoiced, upselling)"
+      invoice_count:
+        type: integer
+        example: 0
+      pricelist_id:
+        type: integer
+        example: 1
+      pricelist_name:
+        type: string
+        example: "Public Pricelist"
+      payment_term_id:
+        type: integer
+        example: 1
+      payment_term_name:
+        type: string
+        example: "Immediate Payment"
+      order_line:
+        type: array
+        items:
+          type: object
+          properties:
+            id:
+              type: integer
+              example: 123
+            product_id:
+              type: integer
+              example: 456
+            product_name:
+              type: string
+              example: "Double Hung Window"
+            product_uom_qty:
+              type: number
+              format: float
+              example: 2.0
+            price_unit:
+              type: number
+              format: float
+              example: 500.00
+            discount:
+              type: number
+              format: float
+              example: 10.0
+            price_subtotal:
+              type: number
+              format: float
+              example: 900.00
+            price_total:
+              type: number
+              format: float
+              example: 990.00
+            name:
+              type: string
+              example: "Double Hung Window 24\"x36\""
+      create_date:
+        type: string
+        format: date-time
+        example: "2025-03-07 09:20:55"
+      write_date:
+        type: string
+        format: date-time
+        example: "2025-03-18 09:53:09"
+
+  EstimateJobRoom:
+    type: object
+    properties:
+      id:
+        type: integer
+        example: 1
+      name:
+        type: string
+        example: "Kitchen"
+
+  Product:
+    type: object
+    properties:
+      id:
+        type: integer
+        example: 70
+      name:
+        type: string
+        example: "Glass"
+      type:
+        type: string
+        example: "consu"
+      description:
+        type: boolean
+        example: false
+      category:
+        type: object
+        properties:
+          id:
+            type: integer
+            example: 15
+          name:
+            type: string
+            example: "All / Services"
+
+  SMSDetails:
+    type: object
+    properties:
+      id:
+        type: integer
+        example: 1
+      customer_id:
+        type: integer
+        example: 27
+      sender_number:
+        type: string
+        example: "+1-202-555-0173"
+      receiving_number:
+        type: string
+        example: "+1-202-555-0173"
+      message:
+        type: string
+        example: "Hello, this is a test message."
+      status:
+        type: string
+        example: "delivered"
+      date_created_by_twilio:
+        type: string
+        format: date-time
+        example: "2025-03-18 09:53:09"
+      date_sent_by_twilio:
+        type: string
+        format: date-time
+        example: "2025-03-18 09:53:09"
+      date_updated_by_twilio:
+        type: string
+        format: date-time
+        example: "2025-03-18 09:53:09"
+
+  OfficeTask:
+    type: object
+    properties:
+      id:
+        type: integer
+        example: 62
+      task_id:
+        type: integer
+        example: 2
+        description: "Related project task ID"
+      task_name:
+        type: string
+        example: "Install Glass Window"
+        description: "Name of the related project task"
+      task_reference:
+        type: string
+        example: "TASK-001"
+        description: "Reference number of the related project task"
+      description:
+        type: string
+        example: "Description of the task"
+      date_deadline:
+        type: string
+        example: "2025-04-10 17:00:00"
+      category_id:
+        type: integer
+        example: 1
+        description: "Office task category ID"
+      category_name:
+        type: string
+        example: "Maintenance"
+        description: "Office task category name"
+      status_id:
+        type: integer
+        example: 2
+        description: "Office task status ID"
+      status_name:
+        type: string
+        example: "In Progress"
+        description: "Office task status name"
+      employee_ids:
+        type: array
+        items:
+          type: integer
+        example: [1, 2, 3]
+        description: "List of assigned employee IDs"
+      employee_names:
+        type: array
+        items:
+          type: string
+        example: ["John Doe", "Jane Smith"]
+        description: "List of assigned employee names"
+      attachments:
+        type: array
+        items:
+          $ref: "#/definitions/Attachment"
+      parts_purchase_logs:
+        type: array
+        items:
+          $ref: "#/definitions/PartsPurchaseLog"
+        description: "List of parts purchase logs associated with this office task"
+
+  PartsPurchaseLog:
+    type: object
+    properties:
+      id:
+        type: integer
+        example: 15
+      office_task_id:
+        type: integer
+        example: 62
+        description: "Related office task ID"
+      cost:
+        type: number
+        format: float
+        example: 150.50
+        description: "Total cost of the purchase"
+      product_ids:
+        type: array
+        items:
+          type: integer
+        example: [10, 20, 30]
+        description: "List of product IDs purchased"
+      product_names:
+        type: string
+        example: "Glass Panel, Sealant, Hardware"
+        description: "Names of products purchased"
+      notes:
+        type: string
+        example: "Purchased from Home Depot on 04/15"
+        description: "Additional notes about the purchase"
+      purchase_date:
+        type: string
+        format: date
+        example: "2025-04-15"
+        description: "Date of purchase"
+      create_date:
+        type: string
+        format: date-time
+        example: "2025-04-15 14:30:00"
+        description: "When this log was created"
+      write_date:
+        type: string
+        format: date-time
+        example: "2025-04-16 10:00:00"
+        description: "When this log was last updated"
+      created_by:
+        type: string
+        example: "John Doe"
+        description: "Name of employee who created the log"
+      updated_by:
+        type: string
+        example: "Jane Smith"
+        description: "Name of employee who last updated the log"
+      attachments:
+        type: array
+        items:
+          type: object
+          properties:
+            id:
+              type: integer
+              example: 100
+            name:
+              type: string
+              example: "receipt.pdf"
+            mimetype:
+              type: string
+              example: "application/pdf"
+            file_size:
+              type: integer
+              example: 54321
+              description: "File size in bytes"
+            checksum:
+              type: string
+              example: "abc123def456"
+        description: "List of attached files (receipts, invoices, etc.)"
+
+  PlannedDate:
+    type: object
+    properties:
+      id:
+        type: integer
+        example: 1
+      planned_date_begin:
+        type: string
+        format: date-time
+        example: "2025-04-10 17:00:00"
+      date_deadline:
+        type: string
+        format: date-time
+        example: "2025-04-10 17:00:00"
+      task_stage:
+        type: string
+        example: "New"
+      created_by:
+        type: string
+        example: "Mitchell Admin"
+      create_date:
+        type: string
+        format: date-time
+        example: "2025-03-18 09:53:09"
+      write_date:
+        type: string
+        format: date-time
+        example: "2025-03-18 09:53:09"
+
+  MailCompose:
+    type: object
+    properties:
+      id:
+        type: integer
+        example: 1
+      subject:
+        type: string
+        example: "Test Subject"
+      body:
+        type: string
+        example: "This is a test email body."
+      email_from:
+        type: string
+        example: Abigail Peterson <abigail.peterson39@example.com>
+      attachments:
+        type: array
+        items:
+          $ref: "#/definitions/Attachment"
+
+  Invoice:
+    type: object
+    properties:
+      id:
+        type: integer
+        example: 42
+      name:
+        type: string
+        example: "INV/2025/00001"
+      invoice_origin:
+        type: string
+        example: "S00037"
+        description: "Sale order name that generated this invoice"
+      state:
+        type: string
+        example: "posted"
+        description: "Invoice state (draft, posted, paid, cancel)"
+      invoice_date:
+        type: string
+        format: date
+        example: "2025-01-20"
+        description: "Invoice date. Can be null if not set."
+      amount_total:
+        type: number
+        format: float
+        example: 1500.00
+        description: "Total amount of the invoice"
+      amount_residual:
+        type: number
+        format: float
+        example: 750.00
+        description: "Remaining amount to be paid"
+      currency_name:
+        type: string
+        example: "USD"
+        description: "Invoice currency"
+      partner_name:
+        type: string
+        example: "Brandon Freeman"
+        description: "Customer name"
+      move_type:
+        type: string
+        example: "out_invoice"
+        description: "Type of invoice (out_invoice, out_refund, etc.)"
+      payment_state:
+        type: string
+        example: "partial"
+        description: "Payment state (not_paid, partial, paid, overpaid, etc.)"
+
+  GanttError:
+    type: object
+    properties:
+      status:
+        type: string
+        example: "error"
+      error:
+        type: object
+        properties:
+          code:
+            type: string
+            example: "UNAUTHORIZED"
+          message:
+            type: string
+            example: "Invalid or missing access token"
+          details:
+            type: object
+            description: "Additional error details if available"
+
+  GanttEmployee:
+    type: object
+    properties:
+      id:
+        type: integer
+        example: 123
+      name:
+        type: string
+        example: "John Smith"
+      icon:
+        type: string
+        nullable: true
+        example: "/web/image/hr.employee/123/image_1920"
+        description: "URL to employee image or null if no image"
+      company:
+        type: string
+        nullable: true
+        example: "ARGO Company"
+        description: "Company name or null if no company"
+      company_id:
+        type: integer
+        nullable: true
+        example: 1
+        description: "Company ID or null if no company"
+      color:
+        type: string
+        example: "#3498db"
+        description: "RGB color for Gantt chart display"
+      sequence:
+        type: integer
+        example: 10
+        description: "Display order sequence"
+
+  GanttProjectTask:
+    type: object
+    properties:
+      id:
+        type: integer
+        example: 456
+      name:
+        type: string
+        example: "Window Installation"
+      employee_id:
+        type: integer
+        nullable: true
+        example: 123
+        description: "Primary employee assigned to task based on schedule type"
+      partner_id:
+        type: integer
+        nullable: true
+        example: 789
+        description: "Customer ID"
+      partner_name:
+        type: string
+        nullable: true
+        example: "John Doe"
+        description: "Customer name"
+      address:
+        type: string
+        example: "123 Main St, City, State 12345"
+        description: "Customer address"
+      start_datetime:
+        type: string
+        format: date-time
+        nullable: true
+        example: "2025-01-20T09:00:00"
+        description: "Estimate schedule start datetime"
+      end_datetime:
+        type: string
+        format: date-time
+        nullable: true
+        example: "2025-01-20T11:00:00"
+        description: "Estimate schedule end datetime"
+      tech_start_datetime:
+        type: string
+        format: date-time
+        nullable: true
+        example: "2025-01-22T13:00:00"
+        description: "Tech job schedule start datetime"
+      tech_end_datetime:
+        type: string
+        format: date-time
+        nullable: true
+        example: "2025-01-22T15:00:00"
+        description: "Tech job schedule end datetime"
+      stage_id:
+        type: integer
+        nullable: true
+        example: 1
+        description: "Task stage ID"
+      stage_name:
+        type: string
+        nullable: true
+        example: "New"
+        description: "Task stage name"
+      type:
+        type: string
+        example: "estimate"
+        enum: ["estimate", "tech_job"]
+        description: "Task type based on available schedule dates"
+      active:
+        type: boolean
+        example: true
+        description: "Whether task is active or archived"
+
+  GanttSecondaryTask:
+    type: object
+    properties:
+      id:
+        type: integer
+        example: 789
+      employee_id:
+        type: integer
+        example: 123
+        description: "Employee assigned to secondary task"
+      start_datetime:
+        type: string
+        format: date-time
+        example: "2025-01-20T10:00:00"
+        description: "Secondary task start datetime"
+      end_datetime:
+        type: string
+        format: date-time
+        example: "2025-01-20T12:00:00"
+        description: "Secondary task end datetime"
+      address:
+        type: string
+        example: "456 Oak Ave, City, State 12345"
+        description: "Secondary task address"
+      description:
+        type: string
+        example: "Training session"
+        description: "Secondary task description"
+      active:
+        type: boolean
+        example: true
+        description: "Whether secondary task is active or archived"
+
+  GanttTaskCreate:
+    type: object
+    required:
+      - employee_id
+      - start_datetime
+      - end_datetime
+    properties:
+      employee_id:
+        type: integer
+        example: 123
+        description: "Employee ID to assign to task"
+      start_datetime:
+        type: string
+        format: date-time
+        example: "2025-01-20T09:00:00"
+        description: "Task start datetime (ISO format)"
+      end_datetime:
+        type: string
+        format: date-time
+        example: "2025-01-20T11:00:00"
+        description: "Task end datetime (ISO format)"
+      type:
+        type: string
+        example: "estimate"
+        enum: ["estimate", "tech_job"]
+        default: "estimate"
+        description: "Task type - determines schedule type and employee role"
+      partner_id:
+        type: integer
+        example: 789
+        description: "Customer ID to assign to task"
+      project_id:
+        type: integer
+        example: 456
+        description: "Project ID to assign to task"
+
+  GanttTaskUpdate:
+    type: object
+    properties:
+      employee_id:
+        type: integer
+        example: 123
+        description: "New employee ID to assign to task"
+      start_datetime:
+        type: string
+        format: date-time
+        example: "2025-01-20T10:00:00"
+        description: "New task start datetime (ISO format)"
+      end_datetime:
+        type: string
+        format: date-time
+        example: "2025-01-20T12:00:00"
+        description: "New task end datetime (ISO format)"
+
+  GanttCustomer:
+    type: object
+    properties:
+      id:
+        type: integer
+        example: 789
+      name:
+        type: string
+        example: "John Doe"
+      street:
+        type: string
+        example: "123 Main St"
+      city:
+        type: string
+        example: "New York"
+      phone:
+        type: string
+        example: "+1-555-0123"
+      is_suggested:
+        type: boolean
+        example: false
+        description: "Whether this customer was suggested by ID parameter"
+
+  GanttSecondaryTaskCreate:
+    type: object
+    required:
+      - employee_id
+      - start_datetime
+      - end_datetime
+      - address
+      - description
+    properties:
+      employee_id:
+        type: integer
+        example: 123
+        description: "Employee ID to assign to secondary task"
+      start_datetime:
+        type: string
+        format: date-time
+        example: "2025-01-20T10:00:00"
+        description: "Secondary task start datetime (ISO format)"
+      end_datetime:
+        type: string
+        format: date-time
+        example: "2025-01-20T12:00:00"
+        description: "Secondary task end datetime (ISO format)"
+      address:
+        type: string
+        example: "456 Oak Ave, City, State 12345"
+        description: "Secondary task address"
+      description:
+        type: string
+        example: "Training session"
+        description: "Secondary task description"
+
+  GanttSecondaryTaskUpdate:
+    type: object
+    properties:
+      employee_id:
+        type: integer
+        example: 123
+        description: "New employee ID to assign to secondary task"
+      start_datetime:
+        type: string
+        format: date-time
+        example: "2025-01-20T10:00:00"
+        description: "New secondary task start datetime (ISO format)"
+      end_datetime:
+        type: string
+        format: date-time
+        example: "2025-01-20T12:00:00"
+        description: "New secondary task end datetime (ISO format)"
+      address:
+        type: string
+        example: "456 Oak Ave, City, State 12345"
+        description: "New secondary task address"
+      description:
+        type: string
+        example: "Updated training session"
+        description: "New secondary task description"
+
+  GanttOverlapCheck:
+    type: object
+    required:
+      - employee_id
+      - start_datetime
+      - end_datetime
+    properties:
+      employee_id:
+        type: integer
+        example: 123
+        description: "Employee ID to check for overlaps"
+      start_datetime:
+        type: string
+        format: date-time
+        example: "2025-01-20T09:00:00"
+        description: "Start datetime for overlap check (ISO format)"
+      end_datetime:
+        type: string
+        format: date-time
+        example: "2025-01-20T11:00:00"
+        description: "End datetime for overlap check (ISO format)"
+      exclude_task_id:
+        type: integer
+        example: 456
+        description: "Task ID to exclude from overlap check (for updates)"
+      should_use_tech_schedule:
+        type: boolean
+        example: false
+        description: "DEPRECATED - ignored for backward compatibility"
+
+  GanttOverlapDetails:
+    type: object
+    properties:
+      has_overlaps:
+        type: boolean
+        example: true
+        description: "Whether any overlaps were found"
+      overlapping_tasks:
+        type: array
+        items:
+          type: object
+          properties:
+            task_id:
+              type: integer
+              example: 456
+            task_name:
+              type: string
+              example: "Window Installation"
+            employee_id:
+              type: integer
+              example: 123
+            employee_name:
+              type: string
+              example: "John Smith"
+            start_datetime:
+              type: string
+              format: date-time
+              example: "2025-01-20T08:00:00"
+            end_datetime:
+              type: string
+              format: date-time
+              example: "2025-01-20T10:00:00"
+            schedule_type:
+              type: string
+              example: "estimate"
+              enum: ["estimate", "tech_job"]
+        description: "List of overlapping project tasks"
+      overlapping_secondary_tasks:
+        type: array
+        items:
+          type: object
+          properties:
+            task_id:
+              type: integer
+              example: 789
+            employee_id:
+              type: integer
+              example: 123
+            employee_name:
+              type: string
+              example: "John Smith"
+            start_datetime:
+              type: string
+              format: date-time
+              example: "2025-01-20T09:30:00"
+            end_datetime:
+              type: string
+              format: date-time
+              example: "2025-01-20T11:30:00"
+            description:
+              type: string
+              example: "Training session"
+        description: "List of overlapping secondary tasks"
+      employees_checked:
+        type: array
+        items:
+          type: object
+          properties:
+            employee_id:
+              type: integer
+              example: 123
+            employee_name:
+              type: string
+              example: "John Smith"
+        description: "List of employees that were checked for overlaps"

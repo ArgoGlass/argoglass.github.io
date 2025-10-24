@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>API Docs — Carmy25</title>
+    <link rel="stylesheet" href="https://unpkg.com/swagger-ui-dist@4/swagger-ui.css" />
+    <style>
+      body { margin:0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial; }
+      .topbar { display:flex; align-items:center; gap:12px; padding:12px; background:#323a45; color:#fff; }
+      .spec-select { margin-left:auto; }
+      .spec-link { color:#9fd; text-decoration:underline; }
+      #swagger-ui { height: calc(100vh - 56px); }
+      .btn { background:#1f6feb; color:#fff; border:none; padding:6px 10px; border-radius:6px; cursor:pointer; }
+    </style>
+  </head>
+  <body>
+    <div class="topbar">
+      <div style="font-weight:600">ArgoGlass API Documentation</div>
+      <div style="font-size:0.9rem; opacity:0.9">View API specs for the site</div>
+
+      <div class="spec-select">
+        <label for="spec">Select spec</label>
+        <select id="spec" aria-label="Select API spec">
+          <option value="/docs/employee_expenses_api.yaml">Enterprise Expense Management (OpenAPI 3)</option>
+          <option value="/docs/mobile_api.yaml">Swagger Argo Mobile (Swagger 2)</option>
+        </select>
+        <button id="loadBtn" class="btn">Load</button>
+      </div>
+    </div>
+
+    <div id="swagger-ui"></div>
+
+    <script src="https://unpkg.com/swagger-ui-dist@4/swagger-ui-bundle.js"></script>
+    <script src="https://unpkg.com/swagger-ui-dist@4/swagger-ui-standalone-preset.js"></script>
+    <script>
+      // Default spec (first option)
+      const select = document.getElementById('spec');
+      const loadBtn = document.getElementById('loadBtn');
+
+      function createUI(specUrl) {
+        // Remove any previous UI content
+        document.getElementById('swagger-ui').innerHTML = '';
+
+        window.ui = SwaggerUIBundle({
+          url: specUrl,
+          dom_id: '#swagger-ui',
+          presets: [
+            SwaggerUIBundle.presets.apis,
+            SwaggerUIStandalonePreset
+          ],
+          layout: 'BaseLayout',
+          deepLinking: true,
+          tryItOutEnabled: true
+        });
+      }
+
+      // Load initial spec
+      createUI(select.value);
+
+      loadBtn.addEventListener('click', () => {
+        const spec = select.value;
+        createUI(spec);
+      });
+
+      // Allow pressing Enter while select is focused to load
+      select.addEventListener('keydown', (e) => { if (e.key === 'Enter') createUI(select.value); });
+    </script>
+  </body>
+</html>

@@ -1,0 +1,1846 @@
+openapi: 3.0.3
+info:
+  title: Enterprise Expense Management API
+  description: |
+    Comprehensive REST API for managing employee expenses, reports, and attachments in enterprise environments.
+    
+    **Authentication**: All protected endpoints require Bearer token authentication using employee API tokens.
+    
+    **Rate Limiting**: API calls are subject to rate limiting policies.
+    
+    **Data Format**: All dates follow ISO 8601 format (YYYY-MM-DD), timestamps include timezone information.
+  version: 1.0.0
+  contact:
+    name: Kostya Mileant
+    email: kostya.m.2002@gmail.com
+
+
+security:
+  - BearerAuth: []
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Employee API token for authentication
+
+  schemas:
+    Employee:
+      type: object
+      properties:
+        id:
+          type: integer
+          description: Unique employee identifier
+          example: 1001
+        name:
+          type: string
+          description: Full employee name
+          example: "Sarah Johnson"
+        company_id:
+          type: integer
+          description: Associated company identifier
+          example: 5
+        company_name:
+          type: string
+          description: Company name
+          example: "TechCorp Solutions"
+
+    Company:
+      type: object
+      properties:
+        id:
+          type: integer
+          description: Unique company identifier
+          example: 5
+        name:
+          type: string
+          description: Company legal name
+          example: "TechCorp Solutions"
+
+    Product:
+      type: object
+      properties:
+        id:
+          type: integer
+          description: Product category identifier
+          example: 150
+        name:
+          type: string
+          description: Expense category name
+          example: "Business Travel & Transportation"
+
+    Vendor:
+      type: object
+      properties:
+        id:
+          type: integer
+          description: Vendor identifier
+          example: 2500
+        name:
+          type: string
+          description: Vendor company name
+          example: "Global Business Services Ltd"
+
+    Vehicle:
+      type: object
+      properties:
+        id:
+          type: integer
+          description: Fleet vehicle identifier
+          example: 45
+        name:
+          type: string
+          description: Vehicle identification
+          example: "BMW X3 - License: BZ-4587-XY"
+
+    Task:
+      type: object
+      properties:
+        id:
+          type: integer
+          description: Project task identifier
+          example: 3200
+        name:
+          type: string
+          description: Task name
+          example: "Client System Implementation - Phase 2"
+        partner_id:
+          type: integer
+          nullable: true
+          description: Associated client/partner identifier
+          example: 850
+        partner_name:
+          type: string
+          nullable: true
+          description: Client/partner name
+          example: "Manufacturing Corp International"
+        project_id:
+          type: integer
+          nullable: true
+          description: Parent project identifier
+          example: 180
+        project_name:
+          type: string
+          nullable: true
+          description: Project name
+          example: "ERP Implementation Q1 2024"
+
+    Tax:
+      type: object
+      properties:
+        id:
+          type: integer
+          description: Tax rule identifier
+          example: 8
+        name:
+          type: string
+          description: Tax description
+          example: "Value Added Tax 19%"
+        amount:
+          type: number
+          format: float
+          description: Tax percentage rate
+          example: 19.0
+
+    Attachment:
+      type: object
+      properties:
+        id:
+          type: integer
+          description: Attachment identifier
+          example: 7890
+        name:
+          type: string
+          description: Original filename
+          example: "business_receipt_20240115.pdf"
+        mimetype:
+          type: string
+          description: File MIME type
+          example: "application/pdf"
+        file_size:
+          type: integer
+          description: File size in bytes
+          example: 1048576
+        create_date:
+          type: string
+          format: date-time
+          description: Upload timestamp
+          example: "2024-01-15T09:30:00Z"
+
+    AttachmentWithData:
+      allOf:
+        - $ref: '#/components/schemas/Attachment'
+        - type: object
+          properties:
+            data:
+              type: string
+              format: byte
+              description: Base64 encoded file content
+              example: "JVBERi0xLjQKJcOkw7zDtsO4w6A..."
+
+    Expense:
+      type: object
+      properties:
+        id:
+          type: integer
+          description: Expense record identifier
+          example: 45230
+        name:
+          type: string
+          description: Expense description
+          example: "Airport parking and transportation costs"
+        description:
+          type: string
+          description: Additional expense details
+          example: "3-day business trip to client site - parking and taxi fares"
+        total_amount_currency:
+          type: number
+          format: float
+          description: Total expense amount
+          example: 187.50
+        currency:
+          type: string
+          description: Currency code (ISO 4217)
+          example: "EUR"
+        date:
+          type: string
+          format: date
+          description: Expense date
+          example: "2024-01-15"
+        state:
+          type: string
+          enum: [draft, reported, approved, done, refused]
+          description: Current expense status
+          example: "draft"
+        state_display:
+          type: string
+          description: Human-readable status
+          example: "Draft"
+        payment_mode:
+          type: string
+          enum: [own_account, company_account]
+          description: Payment method
+          example: "own_account"
+        payment_mode_display:
+          type: string
+          description: Human-readable payment method
+          example: "Employee Paid"
+        company:
+          $ref: '#/components/schemas/Company'
+        product:
+          $ref: '#/components/schemas/Product'
+        vendor:
+          allOf:
+            - $ref: '#/components/schemas/Vendor'
+            - nullable: true
+        vehicle:
+          allOf:
+            - $ref: '#/components/schemas/Vehicle'
+            - nullable: true
+        task:
+          allOf:
+            - $ref: '#/components/schemas/Task'
+            - nullable: true
+        taxes:
+          type: array
+          items:
+            $ref: '#/components/schemas/Tax'
+          example:
+            - id: 8
+              name: "Value Added Tax 19%"
+              amount: 19.0
+        attachments:
+          type: array
+          items:
+            $ref: '#/components/schemas/Attachment'
+        attachment_count:
+          type: integer
+          description: Number of attached documents
+          example: 1
+        receipt_image:
+          type: integer
+          nullable: true
+          description: Primary receipt attachment ID
+          example: 7890
+        create_date:
+          type: string
+          format: date-time
+          description: Record creation timestamp
+          example: "2024-01-15T09:30:00Z"
+        write_date:
+          type: string
+          format: date-time
+          description: Last modification timestamp
+          example: "2024-01-15T11:45:00Z"
+
+    ExpenseReport:
+      type: object
+      properties:
+        id:
+          type: integer
+          description: Expense report identifier
+          example: 8750
+        name:
+          type: string
+          description: Report title
+          example: "Business Trip Expenses - January 2024"
+        employee:
+          $ref: '#/components/schemas/Employee'
+        company:
+          $ref: '#/components/schemas/Company'
+        state:
+          type: string
+          enum: [draft, submit, approve, post, done, cancel]
+          description: Report status
+          example: "submit"
+        state_display:
+          type: string
+          description: Human-readable status
+          example: "Awaiting Approval"
+        total_amount:
+          type: number
+          format: float
+          description: Total report amount
+          example: 1247.85
+        currency_id:
+          type: integer
+          description: Currency identifier
+          example: 1
+        currency_name:
+          type: string
+          description: Currency code
+          example: "EUR"
+        expense_count:
+          type: integer
+          description: Number of expenses in report
+          example: 7
+        attachment_count:
+          type: integer
+          description: Total attached documents
+          example: 12
+        create_date:
+          type: string
+          format: date-time
+          description: Report creation timestamp
+          example: "2024-01-15T09:30:00Z"
+        write_date:
+          type: string
+          format: date-time
+          description: Last modification timestamp
+          example: "2024-01-15T11:45:00Z"
+        approval_date:
+          type: string
+          format: date-time
+          nullable: true
+          description: Approval timestamp
+          example: "2024-01-16T14:20:00Z"
+
+    Category:
+      type: object
+      properties:
+        id:
+          type: integer
+          description: Category identifier
+          example: 150
+        name:
+          type: string
+          description: Category name
+          example: "Business Travel & Transportation"
+        default_code:
+          type: string
+          description: Internal category code
+          example: "TRAVEL"
+        list_price:
+          type: number
+          format: float
+          description: Default unit price
+          example: 0.0
+        uom_name:
+          type: string
+          description: Unit of measure
+          example: "Units"
+
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+          description: Error message
+          example: "Unauthorized access. Valid API token required."
+        details:
+          type: object
+          description: Additional error details
+          nullable: true
+
+    CreateExpenseRequest:
+      type: object
+      required:
+        - name
+        - total_amount_currency
+        - product_id
+      properties:
+        name:
+          type: string
+          description: Expense description
+          example: "Airport parking and transportation costs"
+        total_amount_currency:
+          type: number
+          format: float
+          description: Total expense amount
+          example: 187.50
+        product_id:
+          type: integer
+          description: Expense category ID
+          example: 150
+        payment_mode:
+          type: string
+          enum: [own_account, company_account]
+          default: own_account
+          description: Payment method
+          example: "own_account"
+        date:
+          type: string
+          format: date
+          description: Expense date
+          example: "2024-01-15"
+        description:
+          type: string
+          description: Additional details
+          example: "3-day business trip to client site - parking and taxi fares"
+        tax_ids:
+          type: array
+          items:
+            type: integer
+          description: Applied tax rule IDs
+          example: [8, 12]
+        vendor_id:
+          type: integer
+          description: Vendor ID (required for company_account)
+          example: 2500
+        task:
+          type: object
+          properties:
+            id:
+              type: integer
+              description: Associated task ID
+              example: 3200
+        vehicle:
+          type: object
+          properties:
+            id:
+              type: integer
+              description: Associated vehicle ID
+              example: 45
+
+    UpdateExpenseRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          description: Updated expense description
+          example: "Airport parking and ground transportation"
+        total_amount_currency:
+          type: number
+          format: float
+          description: Updated expense amount
+          example: 195.75
+        product_id:
+          type: integer
+          description: Updated category ID
+          example: 150
+        payment_mode:
+          type: string
+          enum: [own_account, company_account]
+          description: Updated payment method
+          example: "company_account"
+        date:
+          type: string
+          format: date
+          description: Updated expense date
+          example: "2024-01-16"
+        description:
+          type: string
+          description: Updated additional details
+          example: "3-day business trip to client site - updated with final receipts"
+        tax_ids:
+          type: array
+          items:
+            type: integer
+          description: Updated tax rule IDs
+          example: [8]
+        vendor_id:
+          type: integer
+          description: Updated vendor ID
+          example: 2500
+        task:
+          type: object
+          nullable: true
+          properties:
+            id:
+              type: integer
+              description: Updated task ID
+              example: 3200
+        vehicle:
+          type: object
+          nullable: true
+          properties:
+            id:
+              type: integer
+              description: Updated vehicle ID
+              example: 45
+
+    CreateReportRequest:
+      type: object
+      required:
+        - expense_ids
+      properties:
+        name:
+          type: string
+          description: Report title
+          example: "Business Trip Expenses - January 2024"
+        expense_ids:
+          type: array
+          items:
+            type: integer
+          description: Expense IDs to include
+          example: [45230, 45231, 45232]
+        journal_id:
+          type: integer
+          description: Accounting journal ID
+          example: 1
+
+    UpdateAttachmentRequest:
+      type: object
+      properties:
+        file_name:
+          type: string
+          description: Updated filename
+          example: "updated_business_receipt.pdf"
+        file_data:
+          type: string
+          format: byte
+          description: Updated base64 encoded file content
+          example: "JVBERi0xLjQKJcOkw7zDtsO4w6A..."
+
+paths:
+  /v1/expenses:
+    get:
+      summary: List Employee Expenses
+      description: |
+        Retrieve paginated list of expenses for authenticated employee with advanced filtering options.
+        
+        **Default Behavior**: Returns current month expenses only unless date filters are specified.
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: limit
+          in: query
+          description: Maximum records to return (1-100)
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+            example: 25
+        - name: offset
+          in: query
+          description: Number of records to skip for pagination
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+            example: 50
+        - name: state
+          in: query
+          description: Filter by expense status
+          schema:
+            type: string
+            enum: [draft, reported, approved, done, refused]
+            example: "draft"
+        - name: date_from
+          in: query
+          description: Start date filter (ISO 8601)
+          schema:
+            type: string
+            format: date
+            example: "2024-01-01"
+        - name: date_to
+          in: query
+          description: End date filter (ISO 8601)
+          schema:
+            type: string
+            format: date
+            example: "2024-01-31"
+        - name: q
+          in: query
+          description: Search term for name/description
+          schema:
+            type: string
+            example: "transportation"
+        - name: sort_by
+          in: query
+          description: Sort field
+          schema:
+            type: string
+            enum: [date, name, amount, create_date]
+            default: date
+            example: "date"
+        - name: sort_order
+          in: query
+          description: Sort direction
+          schema:
+            type: string
+            enum: [asc, desc]
+            default: desc
+            example: "desc"
+      responses:
+        '200':
+          description: Expenses retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Expense'
+                  pagination:
+                    type: object
+                    properties:
+                      total_count:
+                        type: integer
+                        example: 147
+                      limit:
+                        type: integer
+                        example: 25
+                      offset:
+                        type: integer
+                        example: 50
+                      has_next:
+                        type: boolean
+                        example: true
+                      has_prev:
+                        type: boolean
+                        example: true
+                  filters:
+                    type: object
+                    properties:
+                      current_month_filter:
+                        type: boolean
+                        example: false
+                      date_from:
+                        type: string
+                        example: "2024-01-01"
+                      date_to:
+                        type: string
+                        example: "2024-01-31"
+                      state:
+                        type: string
+                        example: "draft"
+                      search_name:
+                        type: string
+                        example: "transportation"
+                      sort_by:
+                        type: string
+                        example: "date"
+                      sort_order:
+                        type: string
+                        example: "desc"
+                  employee:
+                    $ref: '#/components/schemas/Employee'
+        '401':
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /v1/expense:
+    post:
+      summary: Create New Expense
+      description: |
+        Create a new expense record for the authenticated employee.
+        
+        **Business Rules**:
+        - Employee and company are automatically determined from authentication token
+        - Task assignment requires employee to be estimator or technician on the task
+        - Company account payments require valid vendor_id
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateExpenseRequest'
+            example:
+              name: "Airport parking and transportation costs"
+              total_amount_currency: 187.50
+              product_id: 150
+              payment_mode: "own_account"
+              date: "2024-01-15"
+              description: "3-day business trip to client site - parking and taxi fares"
+              tax_ids: [8]
+              task:
+                id: 3200
+              vehicle:
+                id: 45
+      responses:
+        '201':
+          description: Expense created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  expense_id:
+                    type: integer
+                    example: 45230
+                  employee_id:
+                    type: integer
+                    example: 1001
+                  employee_name:
+                    type: string
+                    example: "Sarah Johnson"
+                  company_id:
+                    type: integer
+                    example: 5
+                  company_name:
+                    type: string
+                    example: "TechCorp Solutions"
+                  message:
+                    type: string
+                    example: "Expense created successfully"
+                  state:
+                    type: string
+                    example: "draft"
+                  vehicle:
+                    $ref: '#/components/schemas/Vehicle'
+                  task:
+                    $ref: '#/components/schemas/Task'
+        '400':
+          description: Invalid request data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Access denied (e.g., unauthorized task assignment)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /v1/expense/{expense_id}:
+    get:
+      summary: Get Expense Details
+      description: |
+        Retrieve detailed information for a specific expense.
+        
+        **Access Control**: Can only view own expenses within same company.
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: expense_id
+          in: path
+          required: true
+          description: Expense identifier
+          schema:
+            type: integer
+            example: 45230
+      responses:
+        '200':
+          description: Expense details retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/Expense'
+        '404':
+          description: Expense not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    put:
+      summary: Update Expense
+      description: |
+        Update an existing expense record.
+        
+        **Business Rules**:
+        - Only expenses in 'draft' or 'reported' status can be modified
+        - Employee and company cannot be changed
+        - Task updates require authorization validation
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: expense_id
+          in: path
+          required: true
+          description: Expense identifier
+          schema:
+            type: integer
+            example: 45230
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateExpenseRequest'
+            example:
+              name: "Airport parking and ground transportation"
+              total_amount_currency: 195.75
+              product_id: 150
+              payment_mode: "company_account"
+              vendor_id: 2500
+              date: "2024-01-16"
+              description: "3-day business trip to client site - updated with final receipts"
+              task:
+                id: 3200
+      responses:
+        '200':
+          description: Expense updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  expense_id:
+                    type: integer
+                    example: 45230
+                  message:
+                    type: string
+                    example: "Expense updated successfully"
+                  updated_fields:
+                    type: array
+                    items:
+                      type: string
+                    example: ["name", "total_amount_currency", "payment_mode", "vendor_id"]
+                  current_data:
+                    type: object
+                    example:
+                      name: "Airport parking and ground transportation"
+                      total_amount_currency: 195.75
+                      product_id: 150
+                      payment_mode: "company_account"
+                      vendor_id: 2500
+                      state: "draft"
+        '400':
+          description: Invalid request data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Cannot modify expense in current state
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: 'Cannot edit expense in state "approved". Only expenses in states ["draft", "reported"] can be edited.'
+                  current_state:
+                    type: string
+                    example: "approved"
+                  allowed_states:
+                    type: array
+                    items:
+                      type: string
+                    example: ["draft", "reported"]
+        '404':
+          description: Expense not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /v1/expense/{expense_id}/delete:
+    delete:
+      summary: Delete Expense
+      description: |
+        Delete an expense record and associated attachments.
+        
+        **Business Rules**:
+        - Only expenses in 'draft' or 'reported' status can be deleted
+        - Automatically handles expense report cleanup
+        - All associated attachments are removed
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: expense_id
+          in: path
+          required: true
+          description: Expense identifier
+          schema:
+            type: integer
+            example: 45230
+      responses:
+        '200':
+          description: Expense deleted successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "Expense deleted successfully"
+                  deleted_expense:
+                    type: object
+                    example:
+                      id: 45230
+                      name: "Airport parking and transportation costs"
+                      total_amount_currency: 187.50
+                      state: "draft"
+                  attachments_deleted:
+                    type: integer
+                    example: 1
+                  affected_reports:
+                    type: array
+                    items:
+                      type: object
+                    example: []
+                  affected_reports_count:
+                    type: integer
+                    example: 0
+        '403':
+          description: Cannot delete expense in current state
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: 'Cannot delete expense in state "approved".'
+                  current_state:
+                    type: string
+                    example: "approved"
+                  allowed_states:
+                    type: array
+                    items:
+                      type: string
+                    example: ["draft", "reported"]
+        '404':
+          description: Expense not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /v1/expense/reports:
+    get:
+      summary: List Expense Reports
+      description: |
+        Retrieve paginated list of expense reports for authenticated employee.
+        
+        **Default Behavior**: Returns current month reports only unless date filters are specified.
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: state
+          in: query
+          description: Filter by report status
+          schema:
+            type: string
+            enum: [draft, submit, approve, post, done, cancel]
+            example: "submit"
+        - name: q
+          in: query
+          description: Search term for report name
+          schema:
+            type: string
+            example: "january"
+        - name: date_from
+          in: query
+          description: Start date filter (ISO 8601)
+          schema:
+            type: string
+            format: date
+            example: "2024-01-01"
+        - name: date_to
+          in: query
+          description: End date filter (ISO 8601)
+          schema:
+            type: string
+            format: date
+            example: "2024-01-31"
+        - name: sort_by
+          in: query
+          description: Sort field
+          schema:
+            type: string
+            enum: [create_date, name, total_amount, approval_date]
+            default: create_date
+            example: "create_date"
+        - name: sort_order
+          in: query
+          description: Sort direction
+          schema:
+            type: string
+            enum: [asc, desc]
+            default: desc
+            example: "desc"
+      responses:
+        '200':
+          description: Expense reports retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  employee_id:
+                    type: integer
+                    example: 1001
+                  employee_name:
+                    type: string
+                    example: "Sarah Johnson"
+                  company_id:
+                    type: integer
+                    example: 5
+                  company_name:
+                    type: string
+                    example: "TechCorp Solutions"
+                  reports:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ExpenseReport'
+                  count:
+                    type: integer
+                    example: 12
+                  filters:
+                    type: object
+                    example:
+                      current_month_filter: false
+                      date_from: "2024-01-01"
+                      date_to: "2024-01-31"
+                      state: "submit"
+                      search_name: "january"
+                      sort_by: "create_date"
+                      sort_order: "desc"
+        '401':
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /v1/report/{report_id}:
+    get:
+      summary: Get Expense Report Details
+      description: |
+        Retrieve detailed information for a specific expense report including all associated expenses.
+        
+        **Access Control**: Can only view own reports within same company.
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: report_id
+          in: path
+          required: true
+          description: Report identifier
+          schema:
+            type: integer
+            example: 8750
+      responses:
+        '200':
+          description: Report details retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    properties:
+                      id:
+                        type: integer
+                        example: 8750
+                      name:
+                        type: string
+                        example: "Business Trip Expenses - January 2024"
+                      employee:
+                        $ref: '#/components/schemas/Employee'
+                      company:
+                        $ref: '#/components/schemas/Company'
+                      state:
+                        type: string
+                        example: "submit"
+                      state_display:
+                        type: string
+                        example: "Awaiting Approval"
+                      total_amount:
+                        type: number
+                        example: 1247.85
+                      currency_id:
+                        type: integer
+                        example: 1
+                      currency_name:
+                        type: string
+                        example: "EUR"
+                      expense_count:
+                        type: integer
+                        example: 7
+                      expenses:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Expense'
+                      create_date:
+                        type: string
+                        example: "2024-01-15T09:30:00Z"
+                      write_date:
+                        type: string
+                        example: "2024-01-15T11:45:00Z"
+                      approval_date:
+                        type: string
+                        nullable: true
+                        example: "2024-01-16T14:20:00Z"
+        '404':
+          description: Report not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /v1/expense/create-report:
+    post:
+      summary: Create Expense Report
+      description: |
+        Create a new expense report containing multiple expenses.
+        
+        **Business Rules**:
+        - All expenses must belong to authenticated employee
+        - Expenses must be in 'draft' or 'reported' status
+        - Draft expenses are automatically moved to 'reported' status
+        - Expenses cannot already be in other active reports
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateReportRequest'
+            example:
+              name: "Business Trip Expenses - January 2024"
+              expense_ids: [45230, 45231, 45232]
+              journal_id: 1
+      responses:
+        '201':
+          description: Report created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  report_id:
+                    type: integer
+                    example: 8750
+                  report_name:
+                    type: string
+                    example: "Business Trip Expenses - January 2024"
+                  employee_id:
+                    type: integer
+                    example: 1001
+                  employee_name:
+                    type: string
+                    example: "Sarah Johnson"
+                  company_id:
+                    type: integer
+                    example: 5
+                  company_name:
+                    type: string
+                    example: "TechCorp Solutions"
+                  total_amount:
+                    type: number
+                    example: 1247.85
+                  expense_count:
+                    type: integer
+                    example: 3
+                  state:
+                    type: string
+                    example: "draft"
+                  expenses_updated:
+                    type: array
+                    items:
+                      type: object
+                    example:
+                      - id: 45230
+                        state: "reported"
+                      - id: 45231
+                        state: "reported"
+                      - id: 45232
+                        state: "reported"
+                  message:
+                    type: string
+                    example: "Expense report created successfully"
+        '400':
+          description: Invalid request data
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "Some expenses are already included in other reports"
+                  expenses_in_reports:
+                    type: array
+                    items:
+                      type: object
+                    example:
+                      - id: 45230
+                        sheet_id: 8749
+                        sheet_name: "Previous Report"
+        '401':
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /v1/report/{report_id}/submit:
+    post:
+      summary: Submit Expense Report
+      description: |
+        Submit expense report for approval workflow.
+        
+        **Business Rules**:
+        - Only reports in 'draft' status can be submitted
+        - Report must contain at least one expense
+        - Changes status to 'submit' for approval workflow
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: report_id
+          in: path
+          required: true
+          description: Report identifier
+          schema:
+            type: integer
+            example: 8750
+      responses:
+        '200':
+          description: Report submitted successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  report_id:
+                    type: integer
+                    example: 8750
+                  message:
+                    type: string
+                    example: "Expense report submitted successfully"
+                  new_state:
+                    type: string
+                    example: "submit"
+                  total_amount:
+                    type: number
+                    example: 1247.85
+                  expense_count:
+                    type: integer
+                    example: 7
+        '400':
+          description: Cannot submit report in current state
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: 'Cannot submit report in state "submit". Only draft reports can be submitted.'
+                  current_state:
+                    type: string
+                    example: "submit"
+        '404':
+          description: Report not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /v1/expense/{expense_id}/attachments:
+    get:
+      summary: List Expense Attachments
+      description: |
+        Retrieve list of attachments for a specific expense (metadata only).
+        
+        **Performance Note**: Returns attachment metadata without binary data for optimal performance.
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: expense_id
+          in: path
+          required: true
+          description: Expense identifier
+          schema:
+            type: integer
+            example: 45230
+      responses:
+        '200':
+          description: Attachments retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  expense_id:
+                    type: integer
+                    example: 45230
+                  attachments:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Attachment'
+                  attachment_count:
+                    type: integer
+                    example: 1
+        '404':
+          description: Expense not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /v1/expense/{expense_id}/attachment/{attachment_id}:
+    get:
+      summary: Download Attachment
+      description: |
+        Retrieve attachment binary data with metadata.
+        
+        **Access Control**: Can only access attachments from own expenses within same company.
+        
+        **Data Format**: Returns base64 encoded binary data suitable for client-side processing.
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: expense_id
+          in: path
+          required: true
+          description: Expense identifier
+          schema:
+            type: integer
+            example: 45230
+        - name: attachment_id
+          in: path
+          required: true
+          description: Attachment identifier
+          schema:
+            type: integer
+            example: 7890
+      responses:
+        '200':
+          description: Attachment data retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  attachment_id:
+                    type: integer
+                    example: 7890
+                  name:
+                    type: string
+                    example: "business_receipt_20240115.pdf"
+                  mimetype:
+                    type: string
+                    example: "application/pdf"
+                  file_size:
+                    type: integer
+                    example: 1048576
+                  data:
+                    type: string
+                    format: byte
+                    example: "JVBERi0xLjQKJcOkw7zDtsO4w6A..."
+                  create_date:
+                    type: string
+                    example: "2024-01-15T09:30:00Z"
+        '403':
+          description: Access denied - attachment belongs to different expense
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "Attachment does not belong to this expense"
+        '404':
+          description: Expense or attachment not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    put:
+      summary: Update Attachment
+      description: |
+        Update existing attachment file or metadata.
+        
+        **Business Rules**:
+        - Only attachments for expenses in 'draft' or 'reported' status can be updated
+        - Can update filename, file content, or both
+        - MIME type is automatically determined from filename
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: expense_id
+          in: path
+          required: true
+          description: Expense identifier
+          schema:
+            type: integer
+            example: 45230
+        - name: attachment_id
+          in: path
+          required: true
+          description: Attachment identifier
+          schema:
+            type: integer
+            example: 7890
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateAttachmentRequest'
+            example:
+              file_name: "updated_business_receipt.pdf"
+              file_data: "JVBERi0xLjQKJcOkw7zDtsO4w6A..."
+      responses:
+        '200':
+          description: Attachment updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  attachment_id:
+                    type: integer
+                    example: 7890
+                  message:
+                    type: string
+                    example: "Attachment updated successfully"
+                  updated_fields:
+                    type: array
+                    items:
+                      type: string
+                    example: ["name", "datas", "mimetype"]
+                  expense_id:
+                    type: integer
+                    example: 45230
+                  expense_state:
+                    type: string
+                    example: "draft"
+                  current_data:
+                    type: object
+                    example:
+                      name: "updated_business_receipt.pdf"
+                      mimetype: "application/pdf"
+                      file_size: 1048576
+                      create_date: "2024-01-15T09:30:00Z"
+        '400':
+          description: Invalid request data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Cannot update attachment for expense in current state
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: 'Cannot update attachment for expense in state "approved".'
+                  current_state:
+                    type: string
+                    example: "approved"
+                  allowed_states:
+                    type: array
+                    items:
+                      type: string
+                    example: ["draft", "reported"]
+        '404':
+          description: Expense or attachment not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    delete:
+      summary: Delete Attachment
+      description: |
+        Delete attachment from expense.
+        
+        **Business Rules**:
+        - Only attachments for expenses in 'draft' or 'reported' status can be deleted
+        - Permanently removes attachment file and metadata
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: expense_id
+          in: path
+          required: true
+          description: Expense identifier
+          schema:
+            type: integer
+            example: 45230
+        - name: attachment_id
+          in: path
+          required: true
+          description: Attachment identifier
+          schema:
+            type: integer
+            example: 7890
+      responses:
+        '200':
+          description: Attachment deleted successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "Attachment deleted successfully"
+                  deleted_attachment:
+                    type: object
+                    example:
+                      id: 7890
+                      name: "business_receipt_20240115.pdf"
+                      mimetype: "application/pdf"
+                      file_size: 1048576
+                  expense_id:
+                    type: integer
+                    example: 45230
+                  expense_state:
+                    type: string
+                    example: "draft"
+        '403':
+          description: Cannot delete attachment from expense in current state
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: 'Cannot delete attachment from expense in state "approved".'
+                  current_state:
+                    type: string
+                    example: "approved"
+                  allowed_states:
+                    type: array
+                    items:
+                      type: string
+                    example: ["draft", "reported"]
+        '404':
+          description: Expense or attachment not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /v1/expense/categories:
+    get:
+      summary: List Expense Categories
+      description: |
+        Retrieve available expense categories for expense creation.
+        
+        **Public Endpoint**: No authentication required - provides reference data for expense categorization.
+      responses:
+        '200':
+          description: Categories retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  categories:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Category'
+                  count:
+                    type: integer
+                    example: 25
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /v1/expense/vendors:
+    get:
+      summary: List Vendors
+      description: |
+        Retrieve available vendors for company account expenses.
+        
+        **Public Endpoint**: No authentication required - provides reference data for vendor selection.
+        
+        **Usage**: Required when creating expenses with payment_mode = "company_account".
+      responses:
+        '200':
+          description: Vendors retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  vendors:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: integer
+                          example: 2500
+                        name:
+                          type: string
+                          example: "Global Business Services Ltd"
+                        email:
+                          type: string
+                          example: "finance@globalservices.com"
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /v1/vehicles:
+    get:
+      summary: List Fleet Vehicles
+      description: |
+        Retrieve available fleet vehicles for expense assignment.
+        
+        **Access Control**: Requires authentication - returns all active fleet vehicles.
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Vehicles retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  count:
+                    type: integer
+                    example: 15
+                  vehicles:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Vehicle'
+        '401':
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
