@@ -38,21 +38,39 @@
       const select = document.getElementById('spec');
       const loadBtn = document.getElementById('loadBtn');
 
-      function createUI(specUrl) {
-        // Remove any previous UI content
-        document.getElementById('swagger-ui').innerHTML = '';
+      function resetContainer() {
+        const old = document.getElementById('swagger-ui');
+        if (!old) return null;
+        const parent = old.parentNode;
+        const fresh = document.createElement('div');
+        fresh.id = 'swagger-ui';
+        parent.replaceChild(fresh, old);
+        return fresh;
+      }
 
-        window.ui = SwaggerUIBundle({
-          url: specUrl,
-          dom_id: '#swagger-ui',
-          presets: [
-            SwaggerUIBundle.presets.apis,
-            SwaggerUIStandalonePreset
-          ],
-          layout: 'BaseLayout',
-          deepLinking: true,
-          tryItOutEnabled: true
-        });
+      function createUI(specUrl) {
+        // Replace the container node to ensure Swagger UI mounts to a clean node
+        resetContainer();
+
+        // Prevent multiple clicks while loading
+        loadBtn.disabled = true;
+
+        try {
+          window.ui = SwaggerUIBundle({
+            url: specUrl,
+            dom_id: '#swagger-ui',
+            presets: [
+              SwaggerUIBundle.presets.apis,
+              SwaggerUIStandalonePreset
+            ],
+            layout: 'BaseLayout',
+            deepLinking: true,
+            tryItOutEnabled: true
+          });
+        } finally {
+          // Re-enable after a short delay to allow the UI to initialize
+          setTimeout(() => { loadBtn.disabled = false; }, 500);
+        }
       }
 
       // Load initial spec
