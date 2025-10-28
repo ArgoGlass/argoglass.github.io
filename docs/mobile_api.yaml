@@ -3783,101 +3783,194 @@ definitions:
         type: string
         example: "other"
       window_type:
-        type: boolean
-        example: false
-      door_type:
-        type: boolean
-        example: false
-      standard_window_dimensions:
         type: string
-        example: "custom"
-      standard_door_dimensions:
-        type: boolean
+        description: "Unified type for windows/doors"
+        enum:
+          - dh
+          - dh_7100
+          - 2l_slider
+          - 2l_slider_7100
+          - 3l_slider
+          - 3l_slider_7100
+          - pic
+          - pic_7100
+          - pic_8000
+          - cas
+          - hopper
+          - awning
+          - 2l_door
+          - 3l_door_mid_slide
+          - 3l_door_mid_fixed
+          - 4l_door
+          - arch
+          - custom
+        example: "dh"
+      standard_door_sizes:
+          type: string
+          description: "Preset sizes for doors; custom for arbitrary"
+          enum:
+            - custom
+            - 2L_s
+            - 2L_m
+            - 2L_l
+            - 3L_mid_sliding_s
+            - 3L_mid_sliding_m
+            - 3L_mid_sliding_l
+            - 3L_mid_fixed_s
+            - 3L_mid_fixed_m
+            - 3L_mid_fixed_l
+            - 4L_s
+            - 4L_m
+          example: "custom"
+      width:
+        type: number,
+        example: 36.0,
+        description: "Width, inches"
+      height:
+        type: number,
+        example: 48.0,
+        description: "Height, inches"
+      extra_options:
+        type: boolean,
         example: false
-      custom_width:
+      bottom_height:
+        type: number,
+        example: 0,
+        description: "Bottom sash height (0 = equal)"
+
+        # --- Hinge/Slide ---
+      hinge_ins_view:
+        type: string
+        enum: [ left, right, none ]
+        example: "none"
+      slide_direction:
+        type: string
+        enum: [ right_to_left, left_to_right, mid_to_left, mid_to_right, mid_fixed, none ]
+        example: "none"
+      three_slider_proportions:
+        type: string
+        enum: [ equal, big_center, custom ]
+        example: "equal"
+      flankers_width:
         type: number
         example: 0
-      custom_width_fraction:
+
+      # --- Colors ---
+      frame_ext_color:
         type: string
-        example: '1-1/2, 1 1/2'
-      custom_height:
-        type: number
-        example: 0
-      custom_height_fraction:
+        enum: [ white, almond, bronze, royal_brown, cocoa, black, custom ]
+        example: "white"
+      frame_int_color:
         type: string
-        example: '1-1/2, 1 1/2'
-      need_to_remeasure:
-        type: boolean
-        example: false
-      door_frame_color:
-        type: string
-        example: 'white_interior_white_exterior'
-      window_frame_color:
-        type: string
-        example: 'almond_interior_almond_exterior_extruded'
-      glass_options:
-        type: string
-        example: "clear"
-      obscure_glass:
-        type: boolean
-        example: false
-      neat:
-        type: boolean
-        example: false
-      triple_pane_glass:
-        type: boolean
-        example: false
-      tempered:
-        type: boolean
-        example: false
-      glass_upcharge:
-        type: boolean
-        example: false
-      grids_type:
-        type: string
-        example: "no_grids"
-      flat_and_contour_grids_color:
-        type: string
-        example: "no_grids_color"
-      upgrade_handle:
-        type: boolean
-        example: false
+        enum: [ white, almond, l_oak, d_oak, cherry, paitable ]
+        example: "white"
+
+      # --- Blinds & reinforcement ---
       blinds:
         type: string
-        example: 'no_blinds'
-      reinforced_meeting_rail:
+        enum: [ none, white, gray, tan, espresso, silver_moon, sand ]
+        example: "none"
+      reinforcement:
         type: string
-        example: '5'
-      foam_insulation_frame_sash:
+        enum: [ none, m_rails_handles, whole_sash ]
+        example: "none"
+
+      # --- Booleans ---
+      nailing_fin:
+        type: boolean,
+        example: false
+      sill_expander:
+        type: boolean,
+        example: false
+      head_expander:
+        type: boolean,
+        example: false
+      foam:
+        type: boolean,
+        example: false
+      egress:
+        type: boolean,
+        example: false
+
+      # --- Screen ---
+      screen:
+        type: string
+        enum: [ none, half_creen, full_screen, flex_screen, pet_half_screen, pet_screen ]
+        example: "half_creen"
+      screen_color:
+        type: string
+        enum: [ match_frame, white, almond, bronze, black, custom ]
+        example: "match_frame"
+      foot_lock:
+        type: string
+        enum: [ white, almond, black ]
+        example: "white"
+
+      # --- Hardware ---
+      hardvare_color:
+        type: string
+        enum: [ white, almond, champagne, black, brushed_nickel, antique_brass, bright_brass ]
+        example: "white"
+
+      # --- Glass ---
+      glass_type:
+        type: string
+        enum: [ loe366, loe366_i89, loe272, clear, 3_panes_272, 3_panes_366 ]
+        example: "loe366"
+      privacy:
+        type: string
+        enum: [ none, obscure, rain, milky_lami ]
+        example: "none"
+      lami:
         type: boolean
         example: false
-      energy_star:
-        type: boolean
-        example: false
-      escape_window:
-        type: boolean
-        example: false
-      brick_molding:
-        type: boolean
-        example: false
-      window_trims:
-        type: boolean
-        example: false
-      window_trims_price:
-        type: number
+      glass_thickness:
+        type: string
+        enum: [ 3_1_thickness, 3_16_thickness ]
+        example: "3_1_thickness"
+
+      # --- Grids ---
+      grid_config:
+        type: string
+        enum: [ none, colonial, prairie, custom ]
+        example: "none"
+      grid_config_bottom:
+        type: string
+        enum: [ none, colonial, prairie, custom ]
+        example: "none"
+      grid_type:
+        type: string
+        enum: [ none, flat, contour, pencil, sdl ]
+        example: "none"
+      grid_type_bottom:
+        type: string
+        enum: [ none, flat, contour, pencil, sdl ]
+        example: "none"
+      grid_ext_color:
+        type: string
+        enum: [ none, white, almond, bronze, royal_brown, cocoa, black, brass, custom ]
+        example: "white"
+      grid_int_color:
+        type: string
+        enum: [ none, white, almond, l_oak, d_oak, cherry, paitable, brass, custom ]
+        example: "white"
+      v_grid_lines:
+        type: integer,
         example: 0
-      window_capping:
-        type: boolean
-        example: false
-      window_capping_price:
-        type: number
+      h_grid_lines:
+        type: integer,
         example: 0
-      other_arch_elements:
-        type: boolean
-        example: false
-      other_arch_elements_price:
-        type: number
+      v_grid_lines_bottom:
+        type: integer,
         example: 0
+      h_grid_lines_bottom:
+        type: integer,
+        example: 0
+
+      # --- Validation/debug ---
+      errors_json:
+        type: object
+        example: { }
 
   ServicePost:
     type: object
@@ -3924,95 +4017,194 @@ definitions:
           type: integer
           example: [ 1, 2, 3 ]
       window_type:
-        type: boolean
-        example: false
-      door_type:
-        type: boolean
-        example: false
-      standard_window_dimensions:
         type: string
+        description: "Unified type for windows/doors"
+        enum:
+          - dh
+          - dh_7100
+          - 2l_slider
+          - 2l_slider_7100
+          - 3l_slider
+          - 3l_slider_7100
+          - pic
+          - pic_7100
+          - pic_8000
+          - cas
+          - hopper
+          - awning
+          - 2l_door
+          - 3l_door_mid_slide
+          - 3l_door_mid_fixed
+          - 4l_door
+          - arch
+          - custom
+        example: "dh"
+      standard_door_sizes:
+        type: string
+        description: "Preset sizes for doors; custom for arbitrary"
+        enum:
+          - custom
+          - 2L_s
+          - 2L_m
+          - 2L_l
+          - 3L_mid_sliding_s
+          - 3L_mid_sliding_m
+          - 3L_mid_sliding_l
+          - 3L_mid_fixed_s
+          - 3L_mid_fixed_m
+          - 3L_mid_fixed_l
+          - 4L_s
+          - 4L_m
         example: "custom"
-      standard_door_dimensions:
-        type: boolean
+      width:
+        type: number,
+        example: 36.0,
+        description: "Width, inches"
+      height:
+        type: number,
+        example: 48.0,
+        description: "Height, inches"
+      extra_options:
+        type: boolean,
         example: false
-      custom_width:
-        type: number
-        example: 10
-      custom_width_fraction:
+      bottom_height:
+        type: number,
+        example: 0,
+        description: "Bottom sash height (0 = equal)"
+
+        # --- Hinge/Slide ---
+      hinge_ins_view:
         type: string
-        example: '1-1/2, 1 1/2'
-      custom_height:
-        type: number
-        example: 10
-      custom_height_fraction:
+        enum: [ left, right, none ]
+        example: "none"
+      slide_direction:
         type: string
-        example: '1-1/2, 1 1/2'
-      need_to_remeasure:
-        type: boolean
-        example: false
-      door_frame_color:
+        enum: [ right_to_left, left_to_right, mid_to_left, mid_to_right, mid_fixed, none ]
+        example: "none"
+      three_slider_proportions:
         type: string
-        example: 'white_interior_white_exterior'
-      window_frame_color:
-        type: string
-        example: 'almond_interior_almond_exterior_extruded'
-      glass_options:
-        type: string
-        example: "clear"
-      obscure_glass:
-        type: boolean
-        example: false
-      neat:
-        type: boolean
-        example: false
-      triple_pane_glass:
-        type: boolean
-        example: false
-      tempered:
-        type: boolean
-        example: false
-      glass_upcharge:
-        type: boolean
-        example: false
-      grids_type:
-        type: string
-        example: "no_grids"
-      flat_and_contour_grids_color:
-        type: string
-        example: "no_grids_color"
-      upgrade_handle:
-        type: boolean
-        example: false
-      blinds:
-        type: string
-        example: no_blinds
-      reinforced_meeting_rail:
-        type: string
-        example: '5'
-      foam_insulation_frame_sash:
-        type: boolean
-        example: false
-      energy_star:
-        type: boolean
-        example: false
-      escape_window:
-        type: boolean
-        example: false
-      brick_molding:
-        type: boolean
-        example: false
-      window_trims:
-        type: boolean
-        example: false
-      window_capping:
-        type: boolean
-        example: false
-      other_arch_elements:
-        type: boolean
-        example: false
-      other_arch_elements_price:
+        enum: [ equal, big_center, custom ]
+        example: "equal"
+      flankers_width:
         type: number
         example: 0
+
+      # --- Colors ---
+      frame_ext_color:
+        type: string
+        enum: [ white, almond, bronze, royal_brown, cocoa, black, custom ]
+        example: "white"
+      frame_int_color:
+        type: string
+        enum: [ white, almond, l_oak, d_oak, cherry, paitable ]
+        example: "white"
+
+      # --- Blinds & reinforcement ---
+      blinds:
+        type: string
+        enum: [ none, white, gray, tan, espresso, silver_moon, sand ]
+        example: "none"
+      reinforcement:
+        type: string
+        enum: [ none, m_rails_handles, whole_sash ]
+        example: "none"
+
+      # --- Booleans ---
+      nailing_fin:
+        type: boolean,
+        example: false
+      sill_expander:
+        type: boolean,
+        example: false
+      head_expander:
+        type: boolean,
+        example: false
+      foam:
+        type: boolean,
+        example: false
+      egress:
+        type: boolean,
+        example: false
+
+      # --- Screen ---
+      screen:
+        type: string
+        enum: [ none, half_creen, full_screen, flex_screen, pet_half_screen, pet_screen ]
+        example: "half_creen"
+      screen_color:
+        type: string
+        enum: [ match_frame, white, almond, bronze, black, custom ]
+        example: "match_frame"
+      foot_lock:
+        type: string
+        enum: [ white, almond, black ]
+        example: "white"
+
+      # --- Hardware ---
+      hardvare_color:
+        type: string
+        enum: [ white, almond, champagne, black, brushed_nickel, antique_brass, bright_brass ]
+        example: "white"
+
+      # --- Glass ---
+      glass_type:
+        type: string
+        enum: [ loe366, loe366_i89, loe272, clear, 3_panes_272, 3_panes_366 ]
+        example: "loe366"
+      privacy:
+        type: string
+        enum: [ none, obscure, rain, milky_lami ]
+        example: "none"
+      lami:
+        type: boolean
+        example: false
+      glass_thickness:
+        type: string
+        enum: [ 3_1_thickness, 3_16_thickness ]
+        example: "3_1_thickness"
+
+      # --- Grids ---
+      grid_config:
+        type: string
+        enum: [ none, colonial, prairie, custom ]
+        example: "none"
+      grid_config_bottom:
+        type: string
+        enum: [ none, colonial, prairie, custom ]
+        example: "none"
+      grid_type:
+        type: string
+        enum: [ none, flat, contour, pencil, sdl ]
+        example: "none"
+      grid_type_bottom:
+        type: string
+        enum: [ none, flat, contour, pencil, sdl ]
+        example: "none"
+      grid_ext_color:
+        type: string
+        enum: [ none, white, almond, bronze, royal_brown, cocoa, black, brass, custom ]
+        example: "white"
+      grid_int_color:
+        type: string
+        enum: [ none, white, almond, l_oak, d_oak, cherry, paitable, brass, custom ]
+        example: "white"
+      v_grid_lines:
+        type: integer,
+        example: 0
+      h_grid_lines:
+        type: integer,
+        example: 0
+      v_grid_lines_bottom:
+        type: integer,
+        example: 0
+      h_grid_lines_bottom:
+        type: integer,
+        example: 0
+
+      # --- Validation/debug ---
+      errors_json:
+        type: object
+        example: { }
 
   SaleOrder:
     type: object
