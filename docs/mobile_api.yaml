@@ -1872,6 +1872,9 @@ paths:
               task_id:
                 type: integer
                 example: 123
+              mechanism_part_status:
+                type: string
+                example: "pending_review"
               employee_ids:
                 type: array
                 items:
@@ -1940,6 +1943,47 @@ paths:
           description: "Deleted"
         404:
           description: "Not found"
+      security:
+        - api_key: [ ]
+
+  /api/v1/office_tasks/employees:
+    get:
+      tags:
+        - "Office Tasks"
+      summary: "Get employees list for office tasks"
+      description: "Returns employees from all user companies along with display metadata used by the UI. Returns id, name, icon, company, company_id, color and sequence for each employee."
+      produces:
+        - "application/json"
+      responses:
+        200:
+          description: "Successful operation"
+          schema:
+            type: object
+            properties:
+              data:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: integer
+                    name:
+                      type: string
+                    icon:
+                      type: string
+                      nullable: true
+                    company:
+                      type: string
+                      nullable: true
+                    company_id:
+                      type: integer
+                      nullable: true
+                    color:
+                      type: string
+                      example: "#3498db"
+                    sequence:
+                      type: integer
+                      example: 10
       security:
         - api_key: [ ]
 
