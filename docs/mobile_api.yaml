@@ -1700,7 +1700,7 @@ paths:
               data:
                 type: array
                 items:
-                    $ref: "#/definitions/OfficeTask"
+                  $ref: "#/definitions/OfficeTask"
         401:
           description: "Unauthorized. Token is invalid or expired."
       security:
@@ -1725,7 +1725,7 @@ paths:
                 type: string
               date_deadline:
                 type: string
-                format: date-time
+                description: "Deadline datetime (ISO8601 or 'YYYY-MM-DD HH:MM:SS')"
               category_id:
                 type: integer
               status_id:
@@ -1736,20 +1736,33 @@ paths:
                 type: array
                 items:
                   type: integer
+            additionalProperties: false
       responses:
         201:
-          description: "Successfully created"
+          description: "Created"
           schema:
             type: object
             properties:
               data:
                 $ref: "#/definitions/OfficeTask"
         400:
-          description: "Bad request. Invalid input."
-        401:
-          description: "Unauthorized. Token is invalid or expired."
+          description: "Invalid request - unexpected fields or invalid data"
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+              fields:
+                type: array
+                items:
+                  type: string
+          examples:
+            application/json:
+              error: "Unexpected fields in payload"
+              fields: ["bad_field"]
       security:
         - api_key: [ ]
+      
 
   /api/v1/office_tasks/categories:
     get:
@@ -1903,7 +1916,8 @@ paths:
       tags:
         - "Attachments"
         - "Office Tasks"
-      summary: "Upload attachments for the office task"
+      summary: "Upload attachment(s) to an office task"
+      description: "Upload one or more attachments to an office task. Supports both single attachment and batch upload. Employee must have access to the office task (direct assignment or via related project task estimator/technician)."
       consumes:
         - "application/json"
       produces:
@@ -1913,11 +1927,81 @@ paths:
           in: path
           required: true
           type: integer
+          description: "Office task ID"
+        - name: body
+          in: body
+          required: true
+          description: "Single attachment: provide name and content. Batch upload: provide attachments array."
+          schema:
+            type: object
+            properties:
+              name:
+                type: string
+                description: "Attachment filename (for single upload)"
+              content:
+                type: string
+                format: byte
+                description: "Base64-encoded file content (for single upload)"
+              mimetype:
+                type: string
+                description: "MIME type (optional, auto-detected from filename if not provided)"
+              attachments:
+                type: array
+                description: "Array of attachments (for batch upload)"
+                items:
+                  type: object
+                  required:
+                    - name
+                    - content
+                  properties:
+                    name:
+                      type: string
+                      description: "Attachment filename"
+                    content:
+                      type: string
+                      format: byte
+                      description: "Base64-encoded file content"
+                    mimetype:
+                      type: string
+                      description: "MIME type (optional, auto-detected from filename)"
       responses:
         201:
-          description: "Created"
+          description: "Attachment(s) created successfully. Returns single attachment object or array of attachments depending on request type."
+          schema:
+            type: object
+            properties:
+              data:
+                description: "Single attachment object (if single upload) or array of attachment objects (if batch upload)"
+                type: object
+                properties:
+                  id:
+                    type: integer
+                    description: "Attachment ID"
+                  name:
+                    type: string
+                    description: "Attachment filename"
+                  mimetype:
+                    type: string
+                    description: "MIME type"
+                  file_size:
+                    type: integer
+                    description: "File size in bytes"
         400:
-          description: "Bad request"
+          description: "Bad request - Invalid JSON or missing required fields"
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+                example: "name and content (base64) are required"
+        404:
+          description: "Office task not found or employee does not have access"
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+                example: "Not found"
       security:
         - api_key: [ ]
 
@@ -3816,13 +3900,22 @@ definitions:
       service_call_fixed:
         type: boolean
         example: false
-      done:
-        type: boolean
-        example: false
       estimate_job_rooms:
         type: array
         items:
           $ref: "#/definitions/EstimateJobRoom"
+      combination_name:
+        type: string
+        example: "Combo-A"
+        description: "Name identifier for grouping related services in a combination"
+      combination_size_width:
+        type: number
+        example: 72.0
+        description: "Total width of combined window/door installation (inches)"
+      combination_size_height:
+        type: number
+        example: 60.0
+        description: "Total height of combined window/door installation (inches)"
       calculator_type:
         type: string
         example: "other"
@@ -4052,14 +4145,23 @@ definitions:
       service_call_fixed:
         type: boolean
         example: false
-      done:
-        type: boolean
-        example: false
       estimate_job_room_ids:
         type: array
         items:
           type: integer
           example: [ 1, 2, 3 ]
+      combination_name:
+        type: string
+        example: "Combo-A"
+        description: "Name identifier for grouping related services in a combination"
+      combination_size_width:
+        type: number
+        example: 72.0
+        description: "Total width of combined window/door installation (inches)"
+      combination_size_height:
+        type: number
+        example: 60.0
+        description: "Total height of combined window/door installation (inches)"
       window_type:
         type: string
         description: "Unified type for windows/doors"
