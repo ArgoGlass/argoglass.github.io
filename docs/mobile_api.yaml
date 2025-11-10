@@ -3919,6 +3919,14 @@ definitions:
       calculator_type:
         type: string
         example: "other"
+      completion_status:
+        type: string
+        description: "Status indicating completion level of the service"
+        enum:
+          - none
+          - partial
+          - done
+        example: "none"
       window_type:
         type: string
         description: "Unified type for windows/doors"
@@ -3984,7 +3992,7 @@ definitions:
         type: string
         enum: [ right_to_left, left_to_right, mid_to_left, mid_to_right, mid_fixed, none ]
         example: "none"
-      three_slider_proportions:
+      l3_slider_proportions:
         type: string
         enum: [ equal, big_center, custom ]
         example: "equal"
@@ -4227,7 +4235,7 @@ definitions:
         type: string
         enum: [ right_to_left, left_to_right, mid_to_left, mid_to_right, mid_fixed, none ]
         example: "none"
-      three_slider_proportions:
+      l3_slider_proportions:
         type: string
         enum: [ equal, big_center, custom ]
         example: "equal"
