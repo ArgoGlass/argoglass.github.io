@@ -1305,6 +1305,7 @@ paths:
           description: "Unauthorized. Token is invalid or expired."
       security:
         - api_key: [ ]
+    # POST /api/v1/estimate_job_rooms removed — create rooms via estimate_job_room_ids on service create/update
 
   /api/v1/products/:
     get:
@@ -1686,7 +1687,7 @@ paths:
       tags:
         - "Office Tasks"
       summary: "Returns all office tasks accessible to the employee"
-      description: "Returns office tasks where employee is assigned directly (employee_ids), or as estimator/technician on the related project task. Includes parts purchase logs for each task."
+      description: "Returns office tasks where employee is assigned directly (employee_ids), or as estimator/technician on the related project task. Includes estimate jobs data for mechanism tasks."
       consumes:
         - "application/json"
       produces:
@@ -1825,7 +1826,7 @@ paths:
       tags:
         - "Office Tasks"
       summary: "Returns a single office task by ID"
-      description: "Returns detailed information about a specific office task including attachments and parts purchase logs. Employee must have access through direct assignment or via related project task."
+      description: "Returns detailed information about a specific office task including attachments and estimate jobs. Employee must have access through direct assignment or via related project task."
       produces:
         - "application/json"
       parameters:
@@ -2071,253 +2072,6 @@ paths:
       security:
         - api_key: [ ]
 
-  /api/v1/parts_purchase_logs:
-    get:
-      tags:
-        - "Parts Purchase Logs"
-      summary: "Returns all parts purchase logs accessible to the employee"
-      description: "Returns all parts purchase logs for office tasks that the employee has access to (through direct assignment or as estimator/technician on related project task)."
-      produces:
-        - "application/json"
-      responses:
-        200:
-          description: "Successful operation"
-          schema:
-            type: object
-            properties:
-              data:
-                type: array
-                items:
-                  $ref: "#/definitions/PartsPurchaseLog"
-        401:
-          description: "Unauthorized. Token is invalid or expired."
-      security:
-        - api_key: [ ]
-    post:
-      tags:
-        - "Parts Purchase Logs"
-      summary: "Create a new parts purchase log"
-      description: "Creates a new parts purchase log for an office task. Employee must have access to the office task. Supports optional attachments in payload."
-      consumes:
-        - "application/json"
-      produces:
-        - "application/json"
-      parameters:
-        - in: body
-          name: body
-          description: "Parts purchase log object to create"
-          required: true
-          schema:
-            type: object
-            required:
-              - office_task_id
-              - cost
-            properties:
-              office_task_id:
-                type: integer
-                example: 123
-                description: "ID of the office task"
-              cost:
-                type: number
-                format: float
-                example: 150.50
-                description: "Cost of the purchase"
-              product_ids:
-                type: array
-                items:
-                  type: integer
-                example: [1, 2, 3]
-                description: "List of product IDs"
-              product_names:
-                type: string
-                example: "Glass Panel, Sealant, Hardware"
-                description: "Names of products purchased"
-              notes:
-                type: string
-                example: "Purchased from Home Depot"
-              purchase_date:
-                type: string
-                format: date
-                example: "2025-04-15"
-              attachments:
-                type: array
-                items:
-                  type: object
-                  properties:
-                    name:
-                      type: string
-                    content:
-                      type: string
-                      description: "Base64 encoded file content"
-                    mimetype:
-                      type: string
-      responses:
-        201:
-          description: "Successfully created"
-          schema:
-            type: object
-            properties:
-              data:
-                $ref: "#/definitions/PartsPurchaseLog"
-        400:
-          description: "Bad request. Invalid input or missing required fields."
-        401:
-          description: "Unauthorized. Token is invalid or expired."
-        403:
-          description: "Forbidden. No access to the office task."
-        404:
-          description: "Office task not found."
-      security:
-        - api_key: [ ]
-
-  /api/v1/parts_purchase_logs/product_names:
-    get:
-      tags:
-        - "Parts Purchase Logs"
-      summary: "Returns distinct product names for autocomplete"
-      description: "Returns a sorted list of product names combined from parts purchase logs and product templates. Optional query parameter `q` filters names containing the substring (case-insensitive)."
-      produces:
-        - "application/json"
-      parameters:
-        - name: q
-          in: query
-          type: string
-          description: "Optional substring to filter names"
-      responses:
-        200:
-          description: "Successful operation"
-          schema:
-            type: object
-            properties:
-              data:
-                type: array
-                items:
-                  type: string
-        401:
-          description: "Unauthorized. Token is invalid or expired."
-      security:
-        - api_key: [ ]
-
-  /api/v1/parts_purchase_logs/<int:log_id>:
-    get:
-      tags:
-        - "Parts Purchase Logs"
-      summary: "Returns a single parts purchase log by ID"
-      description: "Returns detailed information about a specific parts purchase log including attachments. Employee must have access to the related office task."
-      produces:
-        - "application/json"
-      parameters:
-        - name: log_id
-          in: path
-          required: true
-          type: integer
-          description: "ID of the parts purchase log"
-      responses:
-        200:
-          description: "Successful operation"
-          schema:
-            type: object
-            properties:
-              data:
-                $ref: "#/definitions/PartsPurchaseLog"
-        401:
-          description: "Unauthorized. Token is invalid or expired."
-        404:
-          description: "Parts purchase log not found or access denied"
-      security:
-        - api_key: [ ]
-    put:
-      tags:
-        - "Parts Purchase Logs"
-      summary: "Update an existing parts purchase log"
-      description: "Updates fields on a parts purchase log. Employee must have access to the related office task."
-      consumes:
-        - "application/json"
-      produces:
-        - "application/json"
-      parameters:
-        - name: log_id
-          in: path
-          required: true
-          type: integer
-          description: "ID of the parts purchase log to update"
-        - in: body
-          name: body
-          description: "Fields to update"
-          schema:
-            type: object
-            properties:
-              cost:
-                type: number
-                format: float
-              product_ids:
-                type: array
-                items:
-                  type: integer
-              product_names:
-                type: string
-              notes:
-                type: string
-              purchase_date:
-                type: string
-                format: date
-              attachments:
-                type: array
-                items:
-                  type: object
-                  properties:
-                    name:
-                      type: string
-                    content:
-                      type: string
-                    mimetype:
-                      type: string
-      responses:
-        200:
-          description: "Successful operation"
-          schema:
-            type: object
-            properties:
-              data:
-                $ref: "#/definitions/PartsPurchaseLog"
-        400:
-          description: "Bad request. Invalid input."
-        401:
-          description: "Unauthorized. Token is invalid or expired."
-        404:
-          description: "Parts purchase log not found or access denied"
-      security:
-        - api_key: [ ]
-    delete:
-      tags:
-        - "Parts Purchase Logs"
-      summary: "Delete a parts purchase log"
-      description: "Deletes a parts purchase log. Employee must have access to the related office task."
-      produces:
-        - "application/json"
-      parameters:
-        - name: log_id
-          in: path
-          required: true
-          type: integer
-          description: "ID of the parts purchase log to delete"
-      responses:
-        200:
-          description: "Successfully deleted"
-          schema:
-            type: object
-            properties:
-              message:
-                type: string
-                example: "Deleted successfully"
-        400:
-          description: "Bad request. Error deleting log."
-        401:
-          description: "Unauthorized. Token is invalid or expired."
-        404:
-          description: "Parts purchase log not found or access denied"
-      security:
-        - api_key: [ ]
 
   /api/v1/task/<int:task_id>/planned_dates/:
     get:
@@ -3992,7 +3746,7 @@ definitions:
         type: string
         enum: [ right_to_left, left_to_right, mid_to_left, mid_to_right, mid_fixed, none ]
         example: "none"
-      l3_slider_proportions:
+      three_l_slider_proportions:
         type: string
         enum: [ equal, big_center, custom ]
         example: "equal"
@@ -4156,8 +3910,14 @@ definitions:
       estimate_job_room_ids:
         type: array
         items:
-          type: integer
-          example: [ 1, 2, 3 ]
+          type: object
+          properties:
+            id:
+              type: integer
+              example: 1
+            name:
+              type: string
+              example: "Front Door"
       combination_name:
         type: string
         example: "Combo-A"
@@ -4235,7 +3995,7 @@ definitions:
         type: string
         enum: [ right_to_left, left_to_right, mid_to_left, mid_to_right, mid_fixed, none ]
         example: "none"
-      l3_slider_proportions:
+      three_l_slider_proportions:
         type: string
         enum: [ equal, big_center, custom ]
         example: "equal"
@@ -4534,6 +4294,14 @@ definitions:
       name:
         type: string
         example: "Kitchen"
+      color:
+        type: integer
+        example: 5
+        description: "Color index used in Odoo Kanban"
+      task_id:
+        type: integer
+        example: 123
+        description: "Related project.task if the room is task-specific"
 
   Product:
     type: object
@@ -4650,86 +4418,81 @@ definitions:
         type: array
         items:
           $ref: "#/definitions/Attachment"
-      parts_purchase_logs:
+      estimate_job_count:
+        type: integer
+        example: 2
+        description: "Number of mechanism services linked to the office task"
+      estimate_jobs:
         type: array
         items:
-          $ref: "#/definitions/PartsPurchaseLog"
-        description: "List of parts purchase logs associated with this office task"
+          $ref: "#/definitions/EstimateJobSummary"
+        description: "Mechanism estimate jobs (services) related to the office task"
 
-  PartsPurchaseLog:
+  EstimateJobSummary:
     type: object
     properties:
       id:
         type: integer
-        example: 15
-      office_task_id:
-        type: integer
-        example: 62
-        description: "Related office task ID"
+        example: 42
       cost:
         type: number
         format: float
-        example: 150.50
-        description: "Total cost of the purchase"
-      product_ids:
-        type: array
-        items:
-          type: integer
-        example: [10, 20, 30]
-        description: "List of product IDs purchased"
-      product_names:
+        example: 250.00
+        description: "Cost price of the estimate job"
+      description:
         type: string
-        example: "Glass Panel, Sealant, Hardware"
-        description: "Names of products purchased"
-      notes:
-        type: string
-        example: "Purchased from Home Depot on 04/15"
-        description: "Additional notes about the purchase"
+        example: "Install double-pane window"
+        description: "Description of the estimate job"
       purchase_date:
         type: string
         format: date
-        example: "2025-04-15"
-        description: "Date of purchase"
-      create_date:
+        example: "2025-04-20"
+        description: "Date when materials were purchased"
+      product_name:
         type: string
-        format: date-time
-        example: "2025-04-15 14:30:00"
-        description: "When this log was created"
-      write_date:
+        example: "Premium Glass Window"
+        description: "Custom product name for this job"
+      location:
         type: string
-        format: date-time
-        example: "2025-04-16 10:00:00"
-        description: "When this log was last updated"
-      created_by:
+        example: "Living Room"
+        description: "Location/room name where work is performed"
+      window_no:
         type: string
-        example: "John Doe"
-        description: "Name of employee who created the log"
-      updated_by:
+        example: "Window 1"
+        description: "Window identifier/number"
+      other_materials:
         type: string
-        example: "Jane Smith"
-        description: "Name of employee who last updated the log"
-      attachments:
+        example: "Sealant, shims"
+        description: "Free-text list of other materials used"
+      materials:
         type: array
         items:
-          type: object
-          properties:
-            id:
-              type: integer
-              example: 100
-            name:
-              type: string
-              example: "receipt.pdf"
-            mimetype:
-              type: string
-              example: "application/pdf"
-            file_size:
-              type: integer
-              example: 54321
-              description: "File size in bytes"
-            checksum:
-              type: string
-              example: "abc123def456"
-        description: "List of attached files (receipts, invoices, etc.)"
+          $ref: "#/definitions/EstimateJobMaterial"
+        description: "Structured list of warehouse materials used for this job"
+
+  EstimateJobMaterial:
+    type: object
+    properties:
+      id:
+        type: integer
+        example: 21
+      product_id:
+        type: integer
+        example: 501
+        description: "Material product ID"
+      product_name:
+        type: string
+        example: "Foam Installation Kit"
+        description: "Display name of the material"
+      quantity:
+        type: number
+        format: float
+        example: 2
+        description: "Quantity used"
+      uom_name:
+        type: string
+        example: "Units"
+        description: "Unit of measure name"
 
   PlannedDate:
     type: object
