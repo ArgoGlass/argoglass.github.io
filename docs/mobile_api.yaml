@@ -281,7 +281,7 @@ paths:
           description: "ID of the task to which the service belongs"
         - in: body
           name: body
-          description: "Service object that needs to be added"
+          description: "Service creation payload. Supports optional 'materials' (list of {product_id, quantity}) and 'other_materials' (free-text)."
           required: true
           schema:
             $ref: "#/definitions/ServicePost"
@@ -322,10 +322,10 @@ paths:
               description: "ID of the service to update"
             - in: body
               name: body
-              description: "Service object that needs to be updated"
+              description: "Service update payload. 'materials' replaces existing lines; 'other_materials' updates free-text materials notes."
               required: true
               schema:
-                  $ref: "#/definitions/ServicePost"
+                  $ref: "#/definitions/ServiceUpdate"
         responses:
             200:
               description: "Successful operation"
@@ -1293,7 +1293,7 @@ paths:
         - "application/json"
       responses:
         200:
-          description: "Successful operation"
+          description: "Successful operation. Returns a list of estimate job rooms."
           schema:
             type: object
             properties:
@@ -1305,7 +1305,6 @@ paths:
           description: "Unauthorized. Token is invalid or expired."
       security:
         - api_key: [ ]
-    # POST /api/v1/estimate_job_rooms removed — create rooms via estimate_job_room_ids on service create/update
 
   /api/v1/products/:
     get:
@@ -3870,6 +3869,15 @@ definitions:
       errors_json:
         type: object
         example: { }
+      materials:
+        type: array
+        description: "Materials used in this service (estimate job). Each object includes material line details."
+        items:
+          $ref: "#/definitions/EstimateJobMaterial"
+      other_materials:
+        type: string
+        description: "Free-text list or notes about additional materials not itemized in 'materials'."
+        example: "Custom screws, sealant"
 
   ServicePost:
     type: object
@@ -4119,6 +4127,102 @@ definitions:
       errors_json:
         type: object
         example: { }
+      materials:
+        type: array
+        description: "Optional list of materials to create for this service. Each item may include product_id and quantity."
+        items:
+          type: object
+          properties:
+            product_id:
+              type: integer
+              description: "ID of the product used. Required per item."
+              example: 123
+            quantity:
+              type: number
+              description: "Quantity of the product used. Defaults to 0 if omitted."
+              example: 2
+        example:
+          - { product_id: 123, quantity: 2 }
+          - { product_id: 456, quantity: 1 }
+      other_materials:
+        type: string
+        description: "Optional free-text notes describing additional materials not listed in 'materials'."
+        example: "Misc fasteners and caulk"
+
+  ServiceUpdate:
+    type: object
+    description: "Payload for updating an existing service (estimate job). Fields are optional; 'materials' replaces existing materials entirely if provided."
+    properties:
+      description:
+        type: string
+      price:
+        type: number
+      discount_percent:
+        type: number
+      discount_amount:
+        type: number
+      wrong_measurements:
+        type: boolean
+      wrong_measurements_note:
+        type: string
+      remeasured:
+        type: boolean
+      service_call_fixed:
+        type: boolean
+      role:
+        type: string
+        description: "If provided, adds the authenticated employee to the corresponding estimator_ids or technician_ids list."
+        example: "technician"
+      estimate_job_room_ids:
+        type: array
+        description: "Optional room payload list for creating/assigning a room. First created/identified room is assigned."
+        items:
+          type: object
+          properties:
+            id:
+              type: integer
+              description: "Existing room ID"
+            name:
+              type: string
+              description: "Name for new room if creating"
+      materials:
+        type: array
+        description: "If provided, existing materials are cleared and replaced by this list. Each item may include product_id and quantity."
+        items:
+          type: object
+          properties:
+            product_id:
+              type: integer
+              description: "ID of the product used. Required per item."
+              example: 123
+            quantity:
+              type: number
+              description: "Quantity of the product used. Defaults to 0 if omitted."
+              example: 2
+      other_materials:
+        type: string
+        description: "Free-text notes about additional materials not itemized in 'materials'."
+        example: "Paint, tape"
+
+  EstimateJobMaterial:
+    type: object
+    description: "Material line used in an estimate job (service)."
+    properties:
+      id:
+        type: integer
+        example: 10
+      product_id:
+        type: integer
+        example: 123
+      product_name:
+        type: string
+        example: "Glass Panel"
+      quantity:
+        type: number
+        example: 2
+      uom_name:
+        type: string
+        example: "Units"
 
   SaleOrder:
     type: object
@@ -4294,14 +4398,18 @@ definitions:
       name:
         type: string
         example: "Kitchen"
-      color:
+      estimate_jobs_count:
         type: integer
-        example: 5
-        description: "Color index used in Odoo Kanban"
-      task_id:
-        type: integer
-        example: 123
-        description: "Related project.task if the room is task-specific"
+        example: 3
+        description: "Number of estimate.job records that reference this room"
+      common:
+        type: boolean
+        example: false
+        description: "Indicates if this room is a common room used across multiple tasks."
+      active:
+        type: boolean
+        example: true
+        description: "Whether the room is active"
 
   Product:
     type: object
