@@ -226,7 +226,7 @@ paths:
           description: "Task not found"
 
 
-  /api/v1/task/<int:task_id>/services/:
+  /api/v1/task/<int:task_id>/service/:
     get:
       tags:
         - "Tasks"
@@ -3915,17 +3915,16 @@ definitions:
       service_call_fixed:
         type: boolean
         example: false
-      estimate_job_room_ids:
-        type: array
-        items:
-          type: object
-          properties:
-            id:
-              type: integer
-              example: 1
-            name:
-              type: string
-              example: "Front Door"
+      estimate_job_room_id:
+        type: object
+        description: "Optional room payload for creating/assigning a room. Can provide either id of existing room or name to create/find room."
+        properties:
+          id:
+            type: integer
+            example: 1
+          name:
+            type: string
+            example: "Front Door"
       combination_name:
         type: string
         example: "Combo-A"
@@ -4173,18 +4172,18 @@ definitions:
         type: string
         description: "If provided, adds the authenticated employee to the corresponding estimator_ids or technician_ids list."
         example: "technician"
-      estimate_job_room_ids:
-        type: array
-        description: "Optional room payload list for creating/assigning a room. First created/identified room is assigned."
-        items:
-          type: object
-          properties:
-            id:
-              type: integer
-              description: "Existing room ID"
-            name:
-              type: string
-              description: "Name for new room if creating"
+      estimate_job_room_id:
+        type: object
+        description: "Optional room payload for creating/assigning a room. Can provide either id of existing room or name to create/find room."
+        properties:
+          id:
+            type: integer
+            description: "Existing room ID"
+            example: 5
+          name:
+            type: string
+            description: "Name for new room if creating"
+            example: "Living Room"
       materials:
         type: array
         description: "If provided, existing materials are cleared and replaced by this list. Each item may include product_id and quantity."
