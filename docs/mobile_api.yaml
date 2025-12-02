@@ -4578,30 +4578,6 @@ definitions:
           $ref: "#/definitions/EstimateJobMaterial"
         description: "Structured list of warehouse materials used for this job"
 
-  EstimateJobMaterial:
-    type: object
-    properties:
-      id:
-        type: integer
-        example: 21
-      product_id:
-        type: integer
-        example: 501
-        description: "Material product ID"
-      product_name:
-        type: string
-        example: "Foam Installation Kit"
-        description: "Display name of the material"
-      quantity:
-        type: number
-        format: float
-        example: 2
-        description: "Quantity used"
-      uom_name:
-        type: string
-        example: "Units"
-        description: "Unit of measure name"
-
   PlannedDate:
     type: object
     properties:
