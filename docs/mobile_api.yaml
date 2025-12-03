@@ -4483,16 +4483,13 @@ definitions:
         type: string
         example: "Install Glass Window"
         description: "Name of the related project task"
-      task_reference:
-        type: string
-        example: "TASK-001"
-        description: "Reference number of the related project task"
       description:
         type: string
         example: "Description of the task"
       date_deadline:
         type: string
         example: "2025-04-10 17:00:00"
+        description: "Task deadline in format YYYY-MM-DD HH:MM:SS"
       category_id:
         type: integer
         example: 1
@@ -4509,31 +4506,35 @@ definitions:
         type: string
         example: "In Progress"
         description: "Office task status name"
+      status_color:
+        type: integer
+        example: 3
+        description: "Office task status color code (1-11)"
       employee_ids:
         type: array
         items:
           type: integer
         example: [1, 2, 3]
         description: "List of assigned employee IDs"
-      employee_names:
-        type: array
-        items:
-          type: string
-        example: ["John Doe", "Jane Smith"]
-        description: "List of assigned employee names"
+      mechanism_part_status:
+        type: string
+        example: "new"
+        description: "Mechanism status from related project task (only for mechanism tasks). Values: 'new', 'in_stock', 'ordered'"
       attachments:
         type: array
         items:
-          $ref: "#/definitions/Attachment"
-      estimate_job_count:
-        type: integer
-        example: 2
-        description: "Number of mechanism services linked to the office task"
+          type: integer
+        example: [42, 43]
+        description: "List of attachment IDs for this office task"
       estimate_jobs:
         type: array
         items:
           $ref: "#/definitions/EstimateJobSummary"
-        description: "Mechanism estimate jobs (services) related to the office task"
+        description: "List of estimate jobs related to this task (for mechanism category tasks)"
+      estimate_job_count:
+        type: integer
+        example: 2
+        description: "Count of estimate jobs for this task"
 
   EstimateJobSummary:
     type: object
