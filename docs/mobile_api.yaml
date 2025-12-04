@@ -4498,6 +4498,10 @@ definitions:
         type: string
         example: "Maintenance"
         description: "Office task category name"
+      category_color_rgb:
+        type: string
+        example: "#FF5733"
+        description: "Office task category color in RGB hex format"
       status_id:
         type: integer
         example: 2
