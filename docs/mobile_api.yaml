@@ -1787,6 +1787,10 @@ paths:
                       type: integer
                     name:
                       type: string
+                    color_rgb:
+                      type: string
+                      example: "#FF5733"
+                      description: "Category color in RGB hex format"
         401:
           description: "Unauthorized. Token is invalid or expired."
       security:
@@ -1815,6 +1819,10 @@ paths:
                       type: integer
                     name:
                       type: string
+                    color_rgb:
+                      type: string
+                      example: "#FF5733"
+                      description: "Status color in RGB hex format"
         401:
           description: "Unauthorized. Token is invalid or expired."
       security:
