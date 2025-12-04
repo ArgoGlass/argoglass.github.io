@@ -4506,10 +4506,10 @@ definitions:
         type: string
         example: "In Progress"
         description: "Office task status name"
-      status_color:
-        type: integer
-        example: 3
-        description: "Office task status color code (1-11)"
+      status_color_rgb:
+        type: string
+        example: "#FF5733"
+        description: "Office task status color in RGB hex format"
       employee_ids:
         type: array
         items:
